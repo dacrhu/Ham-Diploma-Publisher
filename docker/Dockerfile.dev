@@ -1,0 +1,16 @@
+# Fejlesztői image — a plain node:22-t egészíti ki a Puppeteer-hez (vízjelezés,
+# elrendezés-előnézet, majd a 4. mérföldkőtől a végleges PDF oklevél-generálás)
+# szükséges rendszer-Chromiummal, valamint az oklevél-szövegekhez választható
+# fontokkal (lásd modules/certificate-renderer.js FONT_FAMILIES) — a
+# `PUPPETEER_EXECUTABLE_PATH` env változó (dev.env) mondja meg a Puppeteer-nek,
+# hogy a rendszer-Chromiumot használja a saját ~300MB-os bundle letöltése
+# helyett — így az `npm install` (start-dev.sh) gyors marad.
+FROM node:22
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		chromium \
+		fonts-liberation2 \
+		fonts-ebgaramond \
+		fonts-dancingscript \
+	&& rm -rf /var/lib/apt/lists/*

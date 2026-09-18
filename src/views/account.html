@@ -1,0 +1,165 @@
+<div class="box" style="max-width: 640px;">
+	<h1 class="title is-4">@(#account.title)</h1>
+
+	<form id="form_account">
+		<div class="field">
+			<label class="label">@(#account.email.label)</label>
+			<input class="input" type="email" value="@{repository.profile.email}" disabled>
+		</div>
+
+		<div class="columns is-desktop">
+			<div class="field column">
+				<label class="label">@(#account.firstname.label)</label>
+				<input class="input" type="text" name="firstName" value="@{repository.profile.firstName}" required>
+			</div>
+			<div class="field column">
+				<label class="label">@(#account.lastname.label)</label>
+				<input class="input" type="text" name="lastName" value="@{repository.profile.lastName}" required>
+			</div>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#account.callsign.label)</label>
+			<input class="input" type="text" name="callsign" value="@{repository.profile.callsign}" required autocapitalize="characters">
+		</div>
+
+		<div class="field">
+			<label class="label">@(#account.country.label)</label>
+			<div class="control">
+				<div class="select is-fullwidth">
+					<select name="country" required>
+						@{foreach c in repository.countries}
+						<option value="@{c.code}"@{if c.code == repository.profile.country} selected@{fi}>@{c.name}</option>
+						@{end}
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<div class="columns is-desktop">
+			<div class="field column">
+				<label class="label">@(#account.street.label)</label>
+				<input class="input" type="text" name="street" value="@{repository.profile.address.street}">
+			</div>
+			<div class="field column">
+				<label class="label">@(#account.city.label)</label>
+				<input class="input" type="text" name="city" value="@{repository.profile.address.city}">
+			</div>
+			<div class="field column">
+				<label class="label">@(#account.zip.label)</label>
+				<input class="input" type="text" name="zip" value="@{repository.profile.address.zip}">
+			</div>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#account.language.label)</label>
+			<div class="control">
+				<div class="select">
+					<select name="language" required>
+						<option value="hu"@{if repository.profile.language == 'hu'} selected@{fi}>Magyar</option>
+						<option value="en"@{if repository.profile.language == 'en'} selected@{fi}>English</option>
+						<option value="de"@{if repository.profile.language == 'de'} selected@{fi}>Deutsch</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<hr>
+
+		<h2 class="title is-6">@(#account.password.section)</h2>
+		<p class="help mb-3">@(#account.password.hint)</p>
+
+		<div class="columns is-desktop">
+			<div class="field column">
+				<label class="label">@(#account.password.new.label)</label>
+				<input class="input" type="password" name="password" id="input_password" autocomplete="new-password">
+			</div>
+			<div class="field column">
+				<label class="label">@(#account.password.confirm.label)</label>
+				<input class="input" type="password" name="passwordConfirm" autocomplete="new-password">
+			</div>
+		</div>
+
+		<ul class="is-size-7 mb-4" id="password_checklist">
+			<li data-rule="length" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.length)</li>
+			<li data-rule="lower" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.lower)</li>
+			<li data-rule="upper" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.upper)</li>
+			<li data-rule="digit" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.digit)</li>
+			<li data-rule="special" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.special)</li>
+		</ul>
+
+		<div class="notification is-danger is-hidden" id="notification_error"></div>
+		<div class="notification is-success is-hidden" id="notification_success">@(#account.saved)</div>
+
+		<div class="field">
+			<button class="button is-primary" type="submit" id="button_account">
+				<span>@(#account.submit)</span>
+			</button>
+		</div>
+	</form>
+</div>
+
+<div class="box" style="max-width: 640px;" id="box_mfa" data-can-disable="@{repository.mfaCanDisable}">
+	<h2 class="title is-5">@(#account.mfa.section)</h2>
+
+	<div id="panel_mfa_status">
+		<p class="mb-3">
+			<strong>@{if repository.profile.mfa.enabled}@(#account.mfa.status.enabled) (@{repository.profile.mfa.method})@{else}@(#account.mfa.status.disabled)@{fi}</strong>
+		</p>
+		<div class="buttons" id="mfa_status_buttons">
+			@{if repository.profile.mfa.enabled}
+			@{if repository.mfaMethodsAllowed.indexOf('email') !== -1}
+			<button type="button" class="button mfa-method-btn" data-method="email">@(#account.mfa.change_method): @(#mfa.setup.method.email)</button>
+			@{fi}
+			@{if repository.mfaMethodsAllowed.indexOf('totp') !== -1}
+			<button type="button" class="button mfa-method-btn" data-method="totp">@(#account.mfa.change_method): @(#mfa.setup.method.totp)</button>
+			@{fi}
+			@{if repository.mfaCanDisable}
+			<button type="button" class="button is-danger is-light" id="button_mfa_disable">@(#account.mfa.disable)</button>
+			@{fi}
+			@{else}
+			@{if repository.mfaMethodsAllowed.indexOf('email') !== -1}
+			<button type="button" class="button is-primary mfa-method-btn" data-method="email">@(#mfa.setup.method.email)</button>
+			@{fi}
+			@{if repository.mfaMethodsAllowed.indexOf('totp') !== -1}
+			<button type="button" class="button is-primary mfa-method-btn" data-method="totp">@(#mfa.setup.method.totp)</button>
+			@{fi}
+			@{fi}
+		</div>
+		<div class="notification is-hidden" id="notification_mfa_status" data-saved='@(#account.mfa.saved)'></div>
+	</div>
+
+	<div id="panel_mfa_confirm" class="is-hidden">
+		<div id="mfa_setup_email_block" class="is-hidden">
+			<p class="mb-4">@(#mfa.setup.email.sent)</p>
+		</div>
+
+		<div id="mfa_setup_totp_block" class="is-hidden">
+			<p class="mb-3">@(#mfa.setup.totp.intro)</p>
+			<div class="has-text-centered mb-3">
+				<img id="mfa_totp_qr" src="" alt="QR" style="max-width: 200px;">
+			</div>
+			<div class="field">
+				<label class="label">@(#mfa.setup.totp.secret.label)</label>
+				<input class="input is-family-monospace" type="text" id="mfa_totp_secret" readonly>
+			</div>
+		</div>
+
+		<form id="form_mfa_confirm">
+			<div class="field">
+				<label class="label">@(#mfa.code.label)</label>
+				<input class="input" type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+			</div>
+			<div class="notification is-danger is-hidden" id="notification_mfa_error"></div>
+			<div class="field mt-4">
+				<button class="button is-primary" type="submit" id="button_mfa_confirm">
+					<span>@(#mfa.code.submit)</span>
+				</button>
+				<button class="button" type="button" id="button_mfa_cancel">@(#btn.cancel)</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+@{import('frontendhelper.js + common.js')}
+@{import('pages/account/00_init.js + pages/account/10_submit.js + pages/account/20_mfa.js')}

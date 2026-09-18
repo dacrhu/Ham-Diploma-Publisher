@@ -1,0 +1,341 @@
+<div class="box" id="box_submission_detail" data-id="@{repository.submission._id}">
+	<a href="/submissions" class="is-size-7">@(#submissions.detail.back)</a>
+	<h1 class="title is-4 mt-2">@{repository.submission.diplomaInfo ? repository.submission.diplomaInfo.name : '—'}</h1>
+
+	@{if repository.errorMessage}
+	<p class="notification is-danger is-light">@{repository.errorMessage}</p>
+	@{fi}
+
+	@{if repository.paymentCancelledMessage}
+	<p class="notification is-warning is-light">@{repository.paymentCancelledMessage}</p>
+	@{fi}
+
+	<div class="table-container">
+	<table class="table is-fullwidth">
+		<tbody>
+			<tr><th>@(#submissions.detail.status.label)</th><td><span class="tag @{repository.submission.statusClass}">@{repository.submission.statusLabel}</span></td></tr>
+			<tr><th>@(#submissions.detail.parsed.label)</th><td>@{repository.submission.parsedQsoCount}</td></tr>
+			<tr><th>@(#submissions.detail.matched.label)</th><td>@{repository.submission.matchedQsoCount}</td></tr>
+			<tr><th>@(#submissions.detail.points.label)</th><td>@{repository.submission.totalPoints}</td></tr>
+			<tr><th>@(#submissions.detail.delivery.label)</th><td>@{repository.submission.deliveryLabel}</td></tr>
+			@{if repository.submission.serialNumber}
+			<tr><th>@(#submissions.detail.serial.label)</th><td>@{repository.submission.serialNumber}</td></tr>
+			@{fi}
+		</tbody>
+	</table>
+	</div>
+
+	@{if repository.submission.issuedPdf && repository.pdfDownloadAllowed}
+	<a href="/uploads/submissions/@{repository.submission._id}/diploma" class="button is-success mb-4">@(#submissions.detail.pdf.download)</a>
+	@{fi}
+
+	@{if repository.paymentInfo}
+	<div class="box has-background-light">
+		<h2 class="title is-6">@(#submissions.detail.payment.title)</h2>
+		<p><strong>@(#submissions.detail.payment.amount.label):</strong> @{repository.paymentInfo.amount} @{repository.paymentInfo.currency}</p>
+
+		@{if repository.isOwner}
+			@{if repository.submission.payment && repository.submission.payment.provider == 'bank_transfer'}
+			<div class="notification is-info is-light">
+				<p>@(#submissions.detail.payment.bank.pending)</p>
+				<p><strong>@(#diplomas.bank.accountname.label):</strong> @{repository.paymentInfo.bankTransferDetails.accountName}</p>
+				<p><strong>@(#diplomas.bank.iban.label):</strong> @{repository.paymentInfo.bankTransferDetails.iban}</p>
+				@{if repository.paymentInfo.bankTransferDetails.note}
+				<p><strong>@(#diplomas.bank.note.label):</strong> @{repository.paymentInfo.bankTransferDetails.note}</p>
+				@{fi}
+				<p><strong>@(#submissions.detail.payment.bank.reference):</strong> @{repository.submission.serialNumber}</p>
+			</div>
+			@{else}
+			<div class="notification is-danger is-light is-hidden" id="notification_payment_error"></div>
+			<div class="field is-grouped is-grouped-multiline">
+				@{foreach m in repository.paymentInfo.methods}
+				<div class="control">
+					<button type="button" class="button is-link pay-method" data-provider="@{m}">
+						@{if m == 'stripe'}@(#submissions.detail.payment.method.stripe)@{fi}
+						@{if m == 'paypal'}@(#submissions.detail.payment.method.paypal)@{fi}
+						@{if m == 'bank_transfer'}@(#submissions.detail.payment.method.bank_transfer)@{fi}
+					</button>
+				</div>
+				@{end}
+			</div>
+			<div id="box_bank_details" class="notification is-info is-light is-hidden">
+				<p>@(#submissions.detail.payment.bank.intro)</p>
+				<p><strong>@(#diplomas.bank.accountname.label):</strong> @{repository.paymentInfo.bankTransferDetails.accountName}</p>
+				<p><strong>@(#diplomas.bank.iban.label):</strong> @{repository.paymentInfo.bankTransferDetails.iban}</p>
+				@{if repository.paymentInfo.bankTransferDetails.note}
+				<p><strong>@(#diplomas.bank.note.label):</strong> @{repository.paymentInfo.bankTransferDetails.note}</p>
+				@{fi}
+				<p><strong>@(#submissions.detail.payment.bank.reference):</strong> @{repository.submission.serialNumber}</p>
+			</div>
+			@{fi}
+		@{fi}
+
+		@{if repository.isReviewer}
+		<button type="button" class="button is-success" id="button_confirm_bank" data-confirm='@(#submissions.detail.payment.confirm.bank)'>@(#submissions.detail.payment.confirm.button)</button>
+		@{fi}
+	</div>
+	@{fi}
+
+	@{if repository.isReviewer && repository.submission.status == 'paid' && repository.submission.deliveryChoice == 'physical'}
+	<button type="button" class="button is-success mb-4" id="button_mark_completed" data-confirm='@(#submissions.detail.payment.complete.confirm)'>@(#submissions.detail.payment.complete.button)</button>
+	@{fi}
+
+	@{if repository.paymentInfo || (repository.isReviewer && repository.submission.status == 'paid' && repository.submission.deliveryChoice == 'physical')}
+	@{import('frontendhelper.js + common.js')}
+	@{import('pages/submissions-detail/00_payment.js')}
+	@{fi}
+
+	@{if repository.submission.reviewedAtText}
+	<div class="notification is-light">
+		<p><strong>@(#submissions.detail.review.by):</strong> @{repository.submission.reviewedAtText}</p>
+		@{if repository.submission.managerRemark}
+		<p><strong>@(#submissions.detail.review.remark):</strong> @{repository.submission.managerRemark}</p>
+		@{fi}
+	</div>
+	@{fi}
+
+	@{if repository.submission.manualAdjustments && repository.submission.manualAdjustments.length}
+	<h2 class="title is-6 mt-4">@(#submissions.detail.review.points.history)</h2>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped is-size-7">
+		<thead>
+			<tr>
+				<th>@(#submissions.detail.review.points.history.col.qso)</th>
+				<th class="has-text-right">@(#submissions.detail.qso.col.points)</th>
+				<th>@(#submissions.detail.review.points.history.col.reason)</th>
+				<th>@(#submissions.detail.review.points.history.col.manager)</th>
+				<th>@(#submissions.detail.review.points.history.col.at)</th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach a in repository.submission.manualAdjustments}
+			<tr>
+				<td class="has-text-grey" style="width:110px">@{a.call || '—'}</td>
+				<td class="has-text-right" style="width:80px">
+					@{if a.ruleBased}
+					@{a.amount} @(#submissions.detail.review.qso.points.unit)
+					@{else}
+					@{a.amount > 0 ? '+' + a.amount : a.amount}
+					@{fi}
+				</td>
+				<td>@{a.reason || '—'}</td>
+				<td>@{a.managerText || '—'}</td>
+				<td class="has-text-grey">@{a.atText}</td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{fi}
+
+	@{if repository.submission.autoCheckDetails.mode == 'checklist'}
+	<h2 class="title is-5 mt-4">@(#submissions.detail.checklist.title)</h2>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<tbody>
+			@{foreach r in repository.submission.autoCheckDetails.checklistResults}
+			<tr>
+				<td>
+					@{if r.satisfied}
+					<i class="fas fa-check has-text-success"></i>
+					@{else}
+					<i class="fas fa-xmark has-text-danger"></i>
+					@{fi}
+				</td>
+				<td>@{r.text}</td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{else if repository.submission.autoCheckDetails.categories}
+	<h2 class="title is-5 mt-4">@(#submissions.detail.tiers.title)</h2>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#diplomas.public.detail.tiers.col.category)</th>
+				<th class="has-text-right">@(#submissions.detail.points.label)</th>
+				<th>@(#submissions.detail.tiers.col.achieved)</th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach c in repository.submission.autoCheckDetails.categories}
+			<tr>
+				<td>@{c.label}</td>
+				<td class="has-text-right">@{c.points}</td>
+				<td>@{c.achievedTier ? c.achievedTier.label : '—'}</td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{else}
+	<p class="is-size-7 has-text-grey mt-4">@(#submissions.detail.zone.label): @{repository.submission.autoCheckDetails.zone} (@(#submissions.detail.zone.threshold): @{repository.submission.autoCheckDetails.zoneThreshold})</p>
+	@{fi}
+
+	@{if repository.submission.qslRequests && repository.submission.qslRequests.length}
+	<h2 class="title is-5 mt-4">@(#submissions.detail.qsl.title)</h2>
+	<p class="is-size-7 has-text-grey">@(#submissions.detail.qsl.intro)</p>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#submissions.detail.qsl.col.call)</th>
+				<th>@(#submissions.detail.qsl.col.image)</th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach q in repository.submission.qslRequests}
+			<tr>
+				<td>@{q.call}</td>
+				<td>
+					@{if q.uploaded}
+					<a href="@{q.imageUrl}" target="_blank"><i class="fas fa-image"></i> @(#submissions.detail.qsl.uploaded)</a>
+					@{else if repository.isOwner && repository.submission.status == 'awaiting_qsl'}
+					<form method="post" enctype="multipart/form-data" action="/upload/submissions/@{repository.submission._id}/qsl/@{q.qsoRef}" class="is-inline-flex is-align-items-center">
+						<div class="file is-small has-name">
+							<label class="file-label">
+								<input class="file-input qsl-file-input" type="file" name="file" accept="image/*,.pdf" required>
+								<span class="file-cta">
+									<span class="file-icon"><i class="fas fa-upload"></i></span>
+									<span class="file-label">@(#submissions.detail.qsl.choose)</span>
+								</span>
+								<span class="file-name qsl-file-name">—</span>
+							</label>
+						</div>
+						<button type="submit" class="button is-small is-primary ml-2">@(#submissions.detail.qsl.upload.button)</button>
+					</form>
+					@{else}
+					—
+					@{fi}
+				</td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{if repository.isOwner && repository.submission.status == 'awaiting_qsl'}
+	@{import('frontendhelper.js + common.js')}
+	@{import('pages/submissions-detail/00_qsl.js')}
+	@{fi}
+	@{fi}
+
+	<h2 class="title is-5 mt-4">@(#submissions.detail.qso.title)</h2>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped is-size-7">
+		<thead>
+			<tr>
+				<th>@(#submissions.detail.qso.col.call)</th>
+				<th>@(#submissions.detail.qso.col.date)</th>
+				<th>@(#submissions.detail.qso.col.band)</th>
+				<th>@(#submissions.detail.qso.col.mode)</th>
+				<th>@(#submissions.detail.qso.col.comment)</th>
+				<th>@(#submissions.detail.qso.col.matched)</th>
+				<th class="has-text-right">@(#submissions.detail.qso.col.points)</th>
+				@{if repository.isReviewer && repository.submission.status == 'pending_review'}
+				<th></th>
+				@{fi}
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach q in repository.submission.qsoBreakdown}
+			<tr class="@{if q.excludedReasonLabel}has-text-grey@{fi}">
+				<td>@{q.call}</td>
+				<td>@{q.qsoDateText}</td>
+				<td>@{q.band}</td>
+				<td>@{q.mode}</td>
+				<td>@{q.comment}</td>
+				<td>
+					@{if q.excludedReasonLabel}
+					@{q.excludedReasonLabel}
+					@{else if !q.matchedRules.length && !q.manualEntries.length}
+					—
+					@{else}
+					@{foreach m in q.matchedRules}
+					<span class="tag is-light">@{m.text}</span>
+					@{end}
+					@{fi}
+					@{foreach m in q.manualEntries}
+					@{if m.ruleBased}
+					<span class="tag is-success is-light">@{m.reason || '—'}: @{m.amount} @(#submissions.detail.review.qso.points.unit) (@{m.manualLabel})</span>
+					@{else}
+					<span class="tag is-success is-light">@{m.amount > 0 ? '+' + m.amount : m.amount} @{m.reason || '—'} (@{m.manualLabel})</span>
+					@{fi}
+					@{end}
+				</td>
+				<td class="has-text-right">@{q.effectivePoints}</td>
+				@{if repository.isReviewer && repository.submission.status == 'pending_review'}
+				<td><button type="button" class="button is-small qso-correct-toggle" data-qsoref="@{q.qsoRef}"><i class="fas fa-pen"></i></button></td>
+				@{fi}
+			</tr>
+			@{if repository.isReviewer && repository.submission.status == 'pending_review'}
+			<tr class="qso-correct-row is-hidden" data-qsoref="@{q.qsoRef}">
+				<td colspan="8">
+					<div class="field has-addons">
+						<div class="control">
+							<div class="select is-small">
+								<select class="qso-correct-rule">
+									<option value="">@(#submissions.detail.review.qso.rule.custom)</option>
+									@{foreach r in repository.diplomaRuleOptions}
+									<option value="@{r.index}">@{r.text} (@{r.points} @(#submissions.detail.review.qso.points.unit))</option>
+									@{end}
+								</select>
+							</div>
+						</div>
+						<div class="control">
+							<input class="input is-small qso-correct-amount" type="number" step="1" placeholder="@(#submissions.detail.review.qso.amount.placeholder)">
+						</div>
+						<div class="control is-expanded">
+							<input class="input is-small qso-correct-reason" type="text" placeholder="@(#submissions.detail.review.qso.reason.placeholder)">
+						</div>
+						<div class="control">
+							<button type="button" class="button is-small is-link qso-correct-apply">@(#submissions.detail.review.qso.apply)</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+			@{fi}
+			@{end}
+		</tbody>
+	</table>
+	</div>
+
+	@{if repository.isReviewer && repository.submission.status == 'pending_review'}
+	<hr>
+	<h2 class="title is-5">@(#submissions.detail.review.title)</h2>
+
+	<div class="notification is-danger is-light is-hidden" id="notification_review_error"></div>
+
+	<p class="is-size-7 has-text-grey mb-2">@(#submissions.detail.review.points.label)</p>
+	<form id="form_points" class="field has-addons mb-4">
+		<div class="control">
+			<input class="input" type="number" step="1" name="amount" id="input_points_amount" placeholder="@(#submissions.detail.review.points.amount.placeholder)" required>
+		</div>
+		<div class="control is-expanded">
+			<input class="input" type="text" name="reason" id="input_points_reason" placeholder="@(#submissions.detail.review.points.reason.placeholder)">
+		</div>
+		<div class="control">
+			<button type="submit" class="button" id="button_points_submit">@(#submissions.detail.review.points.submit)</button>
+		</div>
+	</form>
+
+	<div class="field">
+		<div class="control">
+			<textarea class="textarea" id="input_review_remark" placeholder="@(#submissions.detail.review.remark.placeholder)"></textarea>
+		</div>
+	</div>
+
+	<div class="field is-grouped">
+		<div class="control">
+			<button type="button" class="button is-success" id="button_approve" data-confirm='@(#submissions.detail.review.confirm.approve)'>@(#submissions.detail.review.approve)</button>
+		</div>
+		<div class="control">
+			<button type="button" class="button is-danger" id="button_reject" data-confirm='@(#submissions.detail.review.confirm.reject)'>@(#submissions.detail.review.reject)</button>
+		</div>
+	</div>
+
+	@{import('frontendhelper.js + common.js')}
+	@{import('pages/submissions-detail/00_init.js')}
+	@{fi}
+</div>

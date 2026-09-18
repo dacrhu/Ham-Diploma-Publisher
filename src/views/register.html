@@ -1,0 +1,113 @@
+@{layout('layout-nomenu')}
+
+<section class="hero is-fullheight">
+	<div class="hero-body">
+		<div class="container">
+			<div class="columns is-centered">
+				<div class="column is-6">
+					<div class="box">
+						<h1 class="title is-4 has-text-centered">@(#register.title)</h1>
+
+						<form id="form_register">
+							<div class="columns is-desktop">
+								<div class="field column">
+									<label class="label">@(#register.firstname.label)</label>
+									<input class="input" type="text" name="firstName" required>
+								</div>
+								<div class="field column">
+									<label class="label">@(#register.lastname.label)</label>
+									<input class="input" type="text" name="lastName" required>
+								</div>
+							</div>
+
+							<div class="field">
+								<label class="label">@(#register.callsign.label)</label>
+								<input class="input" type="text" name="callsign" required autocapitalize="characters">
+							</div>
+
+							<div class="field">
+								<label class="label">@(#register.email.label)</label>
+								<input class="input" type="email" name="email" required autocomplete="email">
+							</div>
+
+							<div class="columns is-desktop">
+								<div class="field column">
+									<label class="label">@(#register.password.label)</label>
+									<input class="input" type="password" name="password" id="input_password" required autocomplete="new-password">
+								</div>
+								<div class="field column">
+									<label class="label">@(#register.password.confirm.label)</label>
+									<input class="input" type="password" name="passwordConfirm" required autocomplete="new-password">
+								</div>
+							</div>
+
+							<ul class="is-size-7 mb-4" id="password_checklist">
+								<li data-rule="length" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.length)</li>
+								<li data-rule="lower" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.lower)</li>
+								<li data-rule="upper" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.upper)</li>
+								<li data-rule="digit" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.digit)</li>
+								<li data-rule="special" class="has-text-grey"><i class="far fa-circle"></i> @(#register.password.rules.special)</li>
+							</ul>
+
+							<div class="field">
+								<label class="label">@(#register.country.label)</label>
+								<div class="control">
+									<div class="select is-fullwidth">
+										<select name="country" required>
+											@{foreach c in repository.countries}
+											<option value="@{c.code}">@{c.name}</option>
+											@{end}
+										</select>
+									</div>
+								</div>
+							</div>
+
+							<div class="columns is-desktop">
+								<div class="field column">
+									<label class="label">@(#register.street.label)</label>
+									<input class="input" type="text" name="street">
+								</div>
+								<div class="field column">
+									<label class="label">@(#register.city.label)</label>
+									<input class="input" type="text" name="city">
+								</div>
+								<div class="field column">
+									<label class="label">@(#register.zip.label)</label>
+									<input class="input" type="text" name="zip">
+								</div>
+							</div>
+
+							<div class="field">
+								<label class="label">@(#register.captcha.label)</label>
+								<p id="captcha_question" data-template='@(#register.captcha.question)'>@(#register.captcha.loading)</p>
+								<div class="control" id="captcha_options"></div>
+								<input type="hidden" name="captchaToken" id="input_captcha_token">
+								<p class="mt-1"><a href="#" id="link_captcha_reload" class="is-size-7">@(#register.captcha.reload)</a></p>
+							</div>
+
+							<div class="notification is-danger is-hidden" id="notification_error"></div>
+
+							<div class="field mt-4">
+								<button class="button is-primary is-fullwidth" type="submit" id="button_register">
+									<span>@(#register.submit)</span>
+								</button>
+							</div>
+						</form>
+
+						<div class="box is-hidden has-text-centered" id="box_success">
+							<p class="title is-5">@(#register.success.title)</p>
+							<p>@(#register.success.text)</p>
+						</div>
+
+						<p class="has-text-centered mt-4">
+							@(#register.have.account) <a href="/login">@(#login.title)</a>
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+@{import('frontendhelper.js + common.js')}
+@{import('pages/register/00_init.js + pages/register/05_captcha.js + pages/register/10_submit.js')}

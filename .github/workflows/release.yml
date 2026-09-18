@@ -1,0 +1,57 @@
+# Builds source archives (.zip + .tar.gz) for a pushed version tag and
+# attaches them to a GitHub Release, with an auto-generated changelog (based
+# on GitHub's own "generate release notes" feature — the merged PRs/commits
+# since the previous tag, grouped by the categories in
+# .github/release.yml).
+#
+# The archives are built with `git archive` against the TAG itself (not the
+# working tree), so they only ever contain exactly what's actually tagged —
+# nothing untracked/uncommitted, and nothing added after the tag was pushed.
+#
+# Triggers on any tag matching `v*` (e.g. v1.0.0, v1.0.0-beta.1).
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine archive name
+        id: meta
+        run: |
+          name="ham-diploma-publisher-${GITHUB_REF_NAME}"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Build source archives from the tag
+        run: |
+          mkdir -p dist
+          git archive --format=zip \
+            --prefix="${{ steps.meta.outputs.name }}/" \
+            -o "dist/${{ steps.meta.outputs.name }}.zip" \
+            "$GITHUB_REF_NAME"
+          git archive --format=tar.gz \
+            --prefix="${{ steps.meta.outputs.name }}/" \
+            -o "dist/${{ steps.meta.outputs.name }}.tar.gz" \
+            "$GITHUB_REF_NAME"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          # A tag with a hyphen (e.g. v1.0.0-beta.1, v1.0.0-rc.1) is marked
+          # as a pre-release automatically; a plain vX.Y.Z is a normal
+          # release.
+          prerelease: ${{ contains(github.ref_name, '-') }}

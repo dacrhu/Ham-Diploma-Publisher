@@ -1,0 +1,50 @@
+<div class="box">
+	<h1 class="title is-4">@(#submissions.review.title)</h1>
+
+	<div class="field">
+		<label class="label">@(#submissions.review.filter.label)</label>
+		<div class="control">
+			<div class="select">
+				<select id="select_status_filter" onchange="window.location.href='/admin/submissions?status=' + this.value">
+					<option value="pending_review"@{if repository.statusFilter == 'pending_review'} selected@{fi}>@(#submissions.status.pending_review)</option>
+					<option value="awaiting_qsl"@{if repository.statusFilter == 'awaiting_qsl'} selected@{fi}>@(#submissions.status.awaiting_qsl)</option>
+					<option value="approved"@{if repository.statusFilter == 'approved'} selected@{fi}>@(#submissions.status.approved)</option>
+					<option value="rejected"@{if repository.statusFilter == 'rejected'} selected@{fi}>@(#submissions.status.rejected)</option>
+					<option value="rejected_auto"@{if repository.statusFilter == 'rejected_auto'} selected@{fi}>@(#submissions.status.rejected_auto)</option>
+					<option value="all"@{if repository.statusFilter == 'all'} selected@{fi}>@(#submissions.review.filter.all)</option>
+				</select>
+			</div>
+		</div>
+	</div>
+
+	@{if !repository.submissions.length}
+	<p class="has-text-grey">@(#submissions.review.empty)</p>
+	@{else}
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#submissions.review.col.diploma)</th>
+				<th>@(#submissions.review.col.applicant)</th>
+				<th>@(#submissions.list.col.status)</th>
+				<th class="has-text-right">@(#submissions.review.col.points)</th>
+				<th>@(#submissions.review.col.created)</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach s in repository.submissions}
+			<tr>
+				<td>@{s.diplomaInfo ? s.diplomaInfo.name : '—'}</td>
+				<td>@{s.applicantInfo ? (s.applicantInfo.callsign || s.applicantInfo.email) : '—'}</td>
+				<td><span class="tag @{s.statusClass}">@{s.statusLabel}</span></td>
+				<td class="has-text-right">@{s.totalPoints}</td>
+				<td>@{new Date(s.created).toLocaleDateString(controller.language)}</td>
+				<td><a href="/submissions/@{s._id}" class="button is-small is-link is-light">@(#submissions.review.detail)</a></td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{fi}
+</div>

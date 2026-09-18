@@ -1,0 +1,186 @@
+<div class="box">
+	<a href="/diplomas" class="is-size-7">@(#diplomas.public.detail.back)</a>
+	<h1 class="title is-4 mt-2">@{repository.diploma.name}</h1>
+	@{if repository.diploma.description}
+	<p class="subtitle is-6 diploma-description">@{repository.diploma.description}</p>
+	@{fi}
+
+	<p class="mb-4">
+		<a class="button is-small is-info" href="/diplomas/@{repository.diploma._id}/stats">
+			<span class="icon"><i class="fas fa-chart-column"></i></span>
+			<span>@(#diplomas.public.stats.button)</span>
+		</a>
+	</p>
+
+	<div class="columns is-desktop">
+		<div class="column is-5">
+			@{if repository.hasImage}
+			<figure class="image">
+				<img src="/uploads/diplomas/@{repository.diploma._id}/blank-watermarked" alt="@{repository.diploma.name}">
+			</figure>
+			<p class="is-size-7 has-text-grey mt-2">@(#diplomas.public.detail.blank.note)</p>
+			@{else}
+			<p class="has-text-grey">@(#diplomas.public.detail.blank.missing)</p>
+			@{fi}
+		</div>
+		<div class="column is-7">
+			<div class="table-container">
+			<table class="table is-fullwidth">
+				<tbody>
+					<tr><th>@(#diplomas.deadline.label)</th><td>@{repository.deadlineValue}</td></tr>
+					<tr><th>@(#diplomas.fee.pdf.label)</th><td>@{repository.feePdfValue}</td></tr>
+					@{if repository.feePhysicalValue}
+					<tr><th>@(#diplomas.fee.physical.label)</th><td>@{repository.feePhysicalValue}</td></tr>
+					@{fi}
+					@{if repository.paymentMethods.length}
+					<tr>
+						<th>@(#diplomas.payment.methods.label)</th>
+						<td>
+							@{foreach m in repository.paymentMethods}
+							@{if m == 'stripe'}<span class="tag">Stripe</span> @{fi}
+							@{if m == 'paypal'}<span class="tag">PayPal</span> @{fi}
+							@{if m == 'bank_transfer'}<span class="tag">@(#diplomas.payment.method.bank)</span> @{fi}
+							@{end}
+						</td>
+					</tr>
+					@{fi}
+					<tr><th>@(#diplomas.manager.label)</th><td>@{repository.managerValue}</td></tr>
+				</tbody>
+			</table>
+			</div>
+		</div>
+	</div>
+
+	<hr>
+
+	@{if repository.diploma.type == 'challenge'}
+
+	<h2 class="title is-5">@(#diplomas.public.detail.challenge.label)</h2>
+	<p>@(#diplomas.public.detail.challenge.intro)</p>
+	<div class="table-container">
+	<table class="table is-fullwidth">
+		<tbody>
+			<tr><th>@(#diplomas.challenge.targetfield.label)</th><td>@{repository.challengeInfo.targetFieldLabel}</td></tr>
+			<tr><th>@(#diplomas.challenge.drawperround.label)</th><td>@{repository.challengeInfo.drawPerRound}</td></tr>
+			<tr><th>@(#diplomas.challenge.totalrounds.label)</th><td>@{repository.challengeInfo.totalRounds}</td></tr>
+			@{if repository.challengeInfo.roundDeadlineDays}
+			<tr><th>@(#diplomas.challenge.deadlinedays.label)</th><td>@{repository.challengeInfo.roundDeadlineDays}</td></tr>
+			@{fi}
+		</tbody>
+	</table>
+	</div>
+
+	@{else}
+
+	<h2 class="title is-5">@(#diplomas.public.detail.rules.label)</h2>
+
+	@{if !repository.rules.length}
+	<p class="has-text-grey">@(#diplomas.public.detail.rules.empty)</p>
+	@{else}
+	<p>@{repository.rulesIntro}</p>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#diplomas.rule.label)</th>
+				@{if repository.diploma.ruleMode == 'points'}
+				<th class="has-text-right">@(#diplomas.rule.points)</th>
+				@{fi}
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach r in repository.rules}
+			<tr>
+				<td>@{r.text}</td>
+				@{if repository.diploma.ruleMode == 'points'}
+				<td class="has-text-right">@{r.points}</td>
+				@{fi}
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{fi}
+
+	@{if repository.diploma.ruleMode == 'points'}
+
+	<p class="is-size-7 has-text-grey">@(#diplomas.duplicate.label): @{repository.duplicateText}</p>
+
+	@{if repository.tiersEnabled}
+	<h3 class="title is-6 mt-4">@(#diplomas.public.detail.tiers.label)</h3>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#diplomas.public.detail.tiers.col.category)</th>
+				<th>@(#diplomas.public.detail.tiers.col.tier)</th>
+				<th class="has-text-right">@(#diplomas.zone.home)</th>
+				<th class="has-text-right">@(#diplomas.zone.eu)</th>
+				<th class="has-text-right">@(#diplomas.zone.dx)</th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach c in repository.categories}
+			@{foreach t in c.tiers}
+			<tr>
+				<td>@{c.label}</td>
+				<td>@{t.label}</td>
+				<td class="has-text-right">@{t.home}</td>
+				<td class="has-text-right">@{t.eu}</td>
+				<td class="has-text-right">@{t.dx}</td>
+			</tr>
+			@{end}
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{else if repository.showFlatZones}
+	<h3 class="title is-6 mt-4">@(#diplomas.public.detail.zone.label)</h3>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<tbody>
+			<tr><th>@{repository.zoneHomeLabel}</th><td>@{repository.zoneHomeValue}</td></tr>
+			<tr><th>@(#diplomas.zone.eu)</th><td>@{repository.zoneEuValue}</td></tr>
+			<tr><th>@(#diplomas.zone.dx)</th><td>@{repository.zoneDxValue}</td></tr>
+		</tbody>
+	</table>
+	</div>
+	@{fi}
+	@{fi}
+
+	@{fi}
+
+	@{if repository.qslText}
+	<p class="notification is-info is-light mt-4">@{repository.qslText}</p>
+	@{fi}
+
+	@{if repository.allowedBandsText}
+	<p class="notification is-info is-light mt-4">@{repository.allowedBandsText}</p>
+	@{fi}
+
+	@{if repository.challengeAllowedModesText}
+	<p class="notification is-info is-light mt-4">@{repository.challengeAllowedModesText}</p>
+	@{fi}
+
+	@{if repository.repeaterText}
+	<p class="notification is-info is-light mt-4">@{repository.repeaterText}</p>
+	@{fi}
+
+	<hr>
+
+	<h2 class="title is-5">@(#diplomas.public.detail.cta.title)</h2>
+	@{if !user}
+	<p>@(#diplomas.public.detail.cta.login)</p>
+	<a class="button is-primary" href="/login">@(#diplomas.public.detail.cta.login.button)</a>
+	<span class="is-size-7 has-text-grey ml-3">@(#diplomas.public.detail.cta.register.text) <a href="/register">@(#diplomas.public.detail.cta.register.button)</a></span>
+	@{else if repository.diploma.type == 'challenge'}
+	<p class="has-text-grey">@(#diplomas.public.detail.cta.soon)</p>
+	@{else if repository.ctaState.type == 'expired'}
+	<p class="has-text-grey">@(#diplomas.public.detail.cta.expired)</p>
+	@{else if repository.ctaState.type == 'existing'}
+	<p>@(#diplomas.public.detail.cta.existing)</p>
+	<a class="button" href="/submissions/@{repository.ctaState.submissionId}">@(#diplomas.public.detail.cta.existing.link)</a>
+	@{else}
+	<a class="button is-primary" href="/submissions/new/@{repository.diploma._id}">@(#diplomas.public.detail.cta.submit.button)</a>
+	@{fi}
+</div>

@@ -1,0 +1,80 @@
+# Ham Diploma Publisher – helyi fejlesztői környezet
+#
+# Indítás a docker/ mappából:
+#   docker compose -f docker-compose-dev.yml up
+
+services:
+
+  hdp:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: hdp
+    working_dir: /app
+    command: ./start-dev.sh
+    env_file:
+      - dev.env
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ../src:/app
+      - ./start-dev.sh:/app/start-dev.sh
+    depends_on:
+      - mongodb
+      - redis
+
+  mongodb:
+    image: mongo:6
+    container_name: hdp-mongo
+    command: --quiet
+    ports:
+      - "127.0.0.1:27018:27017"
+    volumes:
+      - /home/berci/develop/DOCKERVOLUMES/ham-diploma-publisher-mongo:/data/db
+
+  redis:
+    image: redis:7
+    container_name: hdp-redis
+    ports:
+      - "127.0.0.1:6380:6379"
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: hdp-mailhog
+    ports:
+      # SMTP a konténereknek: mailhog:1025  |  webes postafiók: http://127.0.0.1:8026
+      - "127.0.0.1:1026:1025"
+      - "127.0.0.1:8026:8025"
+
+  # S3-kompatibilis tárhely helyi kipróbálásához (11. lépés) — a `hdp` service
+  # ALAPÉRTELMEZÉSBEN `STORAGE_DRIVER=local`-lal fut (lásd dev.env), ez a két
+  # service NEM kötelező a normál futáshoz, csak akkor kell, ha ki akarod
+  # próbálni az `s3` drivert éles Backblaze B2/Cloudflare R2 fiók nélkül —
+  # lásd dev.env.example a bekapcsoláshoz szükséges env-változókat.
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: hdp-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: hdpminio
+      MINIO_ROOT_PASSWORD: hdpminiosecret
+    ports:
+      # S3 API: http://127.0.0.1:9000  |  webes admin-konzol: http://127.0.0.1:9001
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - /home/berci/develop/DOCKERVOLUMES/ham-diploma-publisher-minio:/data
+
+  # Egyszeri, induláskor lefutó "init" konténer — létrehozza a `hdp-uploads`
+  # bucket-et, utána kilép (nem hosszú-életű service). `mc` (MinIO Client).
+  minio-init:
+    image: quay.io/minio/mc:latest
+    container_name: hdp-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 hdpminio hdpminiosecret; do sleep 1; done;
+      mc mb -p local/hdp-uploads;
+      exit 0;
+      "

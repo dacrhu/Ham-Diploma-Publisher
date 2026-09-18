@@ -1,0 +1,53 @@
+<div class="box">
+	<a href="/diplomas/@{repository.diploma._id}" class="is-size-7">@(#submissions.new.back)</a>
+	<h1 class="title is-4 mt-2">@{repository.diploma.name}</h1>
+	<p class="subtitle is-6">@(#submissions.new.title)</p>
+
+	@{if repository.errorMessage}
+	<p class="notification is-danger is-light">@{repository.errorMessage}</p>
+	@{fi}
+
+	<form method="post" enctype="multipart/form-data" action="/upload/submissions/@{repository.diploma._id}">
+		<div class="field">
+			<label class="label">@(#submissions.new.file.label)</label>
+			<div class="control">
+				<div class="file has-name">
+					<label class="file-label">
+						<input class="file-input" type="file" name="file" id="input_submission_file" accept=".adi,.adif" required>
+						<span class="file-cta">
+							<span class="file-icon"><i class="fas fa-upload"></i></span>
+							<span class="file-label">@(#submissions.new.file.choose)</span>
+						</span>
+						<span class="file-name" id="submission_file_name">—</span>
+					</label>
+				</div>
+			</div>
+		</div>
+
+		@{if repository.diploma.physicalOfferEnabled}
+		<div class="field">
+			<label class="label">@(#submissions.new.delivery.label)</label>
+			<div class="control">
+				<label class="radio">
+					<input type="radio" name="deliveryChoice" value="pdf" checked>
+					@(#submissions.delivery.pdf)
+				</label>
+				<br>
+				<label class="radio">
+					<input type="radio" name="deliveryChoice" value="physical">
+					@(#submissions.delivery.physical)
+				</label>
+			</div>
+		</div>
+		@{fi}
+
+		<div class="field mt-4">
+			<div class="control">
+				<button type="submit" class="button is-primary">@(#submissions.new.submit)</button>
+			</div>
+		</div>
+	</form>
+
+	@{import('frontendhelper.js + common.js')}
+	@{import('pages/submissions-new/00_init.js')}
+</div>

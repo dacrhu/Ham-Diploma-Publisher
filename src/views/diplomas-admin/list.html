@@ -1,0 +1,37 @@
+<div class="box">
+	<div class="level">
+		<div class="level-left">
+			<h1 class="title is-4">@(#diplomas.admin.title)</h1>
+		</div>
+		<div class="level-right">
+			@{if user.sa}
+			<a class="button is-primary" href="/admin/diplomas/edit/new">
+				<span class="icon"><i class="fas fa-plus"></i></span>
+				<span>@(#diplomas.admin.new)</span>
+			</a>
+			@{fi}
+		</div>
+	</div>
+
+	<div class="table-container">
+	<table class="table is-fullwidth is-hoverable" data-delete-confirm='@(#diplomas.admin.delete.confirm)' data-type-standard='@(#diplomas.type.standard)' data-type-challenge='@(#diplomas.type.challenge)'>
+		<thead>
+			<tr>
+				<th>@(#diplomas.admin.col.name)</th>
+				<th>@(#diplomas.admin.col.type)</th>
+				<th>@(#diplomas.admin.col.mode)</th>
+				<th>@(#diplomas.admin.col.status)</th>
+				<th>@(#diplomas.admin.col.manager)</th>
+				<th>@(#diplomas.admin.col.created)</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody id="table_diplomas"></tbody>
+	</table>
+	</div>
+
+	<p class="has-text-grey is-hidden" id="notice_empty">@(#diplomas.admin.empty)</p>
+</div>
+
+@{import('frontendhelper.js + common.js')}
+@{import('pages/diplomas-admin-list/00_init.js')}

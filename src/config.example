@@ -1,0 +1,78 @@
+# Ham Diploma Publisher – default configuration TEMPLATE.
+#
+# Copy this file to `config` (same directory, no extension) before first run
+# - `config` itself is gitignored (it holds real secrets once filled in), only
+#   this blank template is version-controlled:
+#
+#   cp src/config.example src/config
+#
+# Every value below can ALSO be provided as an environment variable instead
+# of editing this file (Docker/Kubernetes-friendly - inject via a K8s
+# Secret/ConfigMap, a docker-compose env_file, etc.), which is generally the
+# preferred approach for anything sensitive in a real deployment:
+#   - `secret` / `encryptKey` (Total.js's own session-cookie signing /
+#     encryption keys) -> env vars SECRET / ENCRYPT_KEY (see
+#     src/definitions/00_variables.js).
+#   - every `HDP_*`-prefixed key below -> the SAME-NAMED env var WITHOUT the
+#     `HDP_` prefix (e.g. HDP_SUPERUSER_EMAIL -> env var SUPERUSER_EMAIL) -
+#     this is how docker/dev.env overrides these in local development, see
+#     src/definitions/00_variables.js and the root README.md's
+#     "Configuration" section.
+# An environment variable always wins over the value written here.
+
+name                            : Ham Diploma Publisher
+version                         : 0.1.0
+
+cookieAuthName                                  : hdp_auth
+cookieLangName                                  : hdp_lang
+
+default_xpoweredby               :
+
+# REQUIRED - generate a long, random, unique string for each of these two
+# (e.g. `openssl rand -base64 32`) and keep them secret. Used for signing
+# session cookies and for encryption - if they leak, sessions can be forged.
+# Can also be set via the SECRET / ENCRYPT_KEY env vars instead of editing
+# this file (see the note above).
+secret                          : CHANGE_ME_random_string
+secretType                      : sha512
+secretSalt                      : true
+encryptKey                      : CHANGE_ME_random_string
+
+default_request_timeout         : 50000
+
+HDP_APP_DOMAIN                  : 127.0.0.1:8000
+HDP_MODULE_MONGODB_WRAPPER_X509 : false
+HDP_MONGODB_DB_NAME             : hdp
+HDP_REDIS_DB_MFA                : 1
+HDP_REDIS_DB_CHANGE_PASSWORD    : 2
+HDP_REDIS_DB_SESSION            : 3
+HDP_REDIS_DB_EMAIL_VERIFY       : 4
+HDP_REDIS_DB_CAPTCHA            : 5
+# REQUIRED - the email address(es, comma-separated) that automatically
+# become superadmin on registration. See docker/dev.env.example for details.
+HDP_SUPERUSER_EMAIL             : admin@example.com
+HDP_USER_HASH_TYPE              : sha512
+# REQUIRED - a random string, used as the salt for password hashing (see
+# CLAUDE.md). Generate one the same way as `secret`/`encryptKey` above.
+HDP_USER_HASH_SALT              : CHANGE_ME_random_string
+HDP_UPLOAD_MAX_FILE_SIZE_IN_KB  : 20480
+HDP_LOG_IP_HEADER               :
+HDP_TTL_MFA_MAIL                : 300
+HDP_TTL_MFA_PENDING              : 600
+HDP_TTL_CHANGE_PASS             : 14400
+HDP_TTL_SESSION                 : 86400
+HDP_TTL_EMAIL_VERIFY             : 86400
+HDP_TTL_CAPTCHA                  : 600
+HDP_STORAGE_DRIVER               : local
+HDP_S3_ENDPOINT                  :
+HDP_S3_REGION                    : auto
+HDP_S3_BUCKET                    :
+HDP_S3_ACCESS_KEY                :
+HDP_S3_SECRET_KEY                :
+HDP_S3_FORCE_PATH_STYLE          : false
+HDP_STRIPE_SECRET_KEY            :
+HDP_STRIPE_WEBHOOK_SECRET        :
+HDP_PAYPAL_CLIENT_ID             :
+HDP_PAYPAL_CLIENT_SECRET         :
+HDP_PAYPAL_WEBHOOK_ID            :
+HDP_PAYPAL_ENV                   : sandbox

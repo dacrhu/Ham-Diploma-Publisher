@@ -1,0 +1,117 @@
+@{layout('layout-nomenu')}
+
+<section class="hero is-fullheight">
+	<div class="hero-body">
+		<div class="container">
+			<div class="columns is-centered">
+				<div class="column is-4" id="mfa_column">
+					<div class="box">
+
+						<div id="panel_login">
+							<h1 class="title is-4 has-text-centered">@(#login.title)</h1>
+
+							<div class="notification is-success is-hidden" id="notification_verify_ok">@(#login.verify.ok)</div>
+							<div class="notification is-danger is-hidden" id="notification_verify_invalid">@(#login.verify.invalid)</div>
+
+							<form id="form_login">
+								<div class="field">
+									<label class="label">@(#login.email.label)</label>
+									<input class="input" type="email" name="email" required autocomplete="email">
+								</div>
+
+								<div class="field">
+									<label class="label">@(#login.password.label)</label>
+									<input class="input" type="password" name="password" required autocomplete="current-password">
+								</div>
+
+								<div class="notification is-danger is-hidden" id="notification_error"></div>
+
+								<div class="field mt-4">
+									<button class="button is-primary is-fullwidth" type="submit" id="button_login">
+										<span>@(#login.submit)</span>
+									</button>
+								</div>
+							</form>
+
+							<p class="has-text-centered mt-3">
+								<a href="/forgot-password">@(#login.forgot.link)</a>
+							</p>
+							<p class="has-text-centered mt-2">
+								<a href="/register">@(#login.register.link)</a>
+							</p>
+						</div>
+
+						<div id="panel_mfa_verify" class="is-hidden">
+							<h1 class="title is-4 has-text-centered">@(#mfa.verify.title)</h1>
+							<p class="mb-3" id="mfa_verify_intro" data-email='@(#mfa.verify.intro.email)' data-totp='@(#mfa.verify.intro.totp)'></p>
+
+							<form id="form_mfa_verify">
+								<div class="field">
+									<label class="label">@(#mfa.code.label)</label>
+									<input class="input" type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+								</div>
+								<div class="notification is-danger is-hidden" id="notification_mfa_verify_error"></div>
+								<div class="field mt-4">
+									<button class="button is-primary is-fullwidth" type="submit" id="button_mfa_verify">
+										<span>@(#mfa.code.submit)</span>
+									</button>
+								</div>
+							</form>
+						</div>
+
+						<div id="panel_mfa_setup_choose" class="is-hidden">
+							<h1 class="title is-4 has-text-centered">@(#mfa.setup.title)</h1>
+							<p class="mb-4">@(#mfa.setup.intro)</p>
+							<div class="buttons">
+								<button class="button is-fullwidth mfa-method-btn" data-method="email" id="button_mfa_method_email">
+									<span class="icon"><i class="fas fa-envelope"></i></span>
+									<span>@(#mfa.setup.method.email)</span>
+								</button>
+								<button class="button is-fullwidth mfa-method-btn" data-method="totp" id="button_mfa_method_totp">
+									<span class="icon"><i class="fas fa-mobile-screen"></i></span>
+									<span>@(#mfa.setup.method.totp)</span>
+								</button>
+							</div>
+						</div>
+
+						<div id="panel_mfa_setup_confirm" class="is-hidden">
+							<h1 class="title is-4 has-text-centered">@(#mfa.setup.title)</h1>
+
+							<div id="mfa_setup_email_block" class="is-hidden">
+								<p class="mb-4">@(#mfa.setup.email.sent)</p>
+							</div>
+
+							<div id="mfa_setup_totp_block" class="is-hidden">
+								<p class="mb-3">@(#mfa.setup.totp.intro)</p>
+								<div class="has-text-centered mb-3">
+									<img id="mfa_totp_qr" src="" alt="QR" style="max-width: 200px;">
+								</div>
+								<div class="field">
+									<label class="label">@(#mfa.setup.totp.secret.label)</label>
+									<input class="input is-family-monospace" type="text" id="mfa_totp_secret" readonly>
+								</div>
+							</div>
+
+							<form id="form_mfa_setup_confirm">
+								<div class="field">
+									<label class="label">@(#mfa.code.label)</label>
+									<input class="input" type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+								</div>
+								<div class="notification is-danger is-hidden" id="notification_mfa_setup_error"></div>
+								<div class="field mt-4">
+									<button class="button is-primary is-fullwidth" type="submit" id="button_mfa_setup_confirm">
+										<span>@(#mfa.code.submit)</span>
+									</button>
+								</div>
+							</form>
+						</div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+@{import('frontendhelper.js + common.js')}
+@{import('pages/login/00_init.js + pages/login/10_submit.js + pages/login/20_mfa.js')}

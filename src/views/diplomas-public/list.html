@@ -1,0 +1,55 @@
+<div class="box">
+	<h1 class="title is-4">@(#diplomas.public.list.title)</h1>
+	<p class="subtitle is-6">@(#diplomas.public.list.intro)</p>
+
+	<div class="buttons has-addons mb-4">
+		<a href="@{repository.filterUrls.all}" class="button@{if repository.typeFilter == 'all'} is-link is-selected@{fi}">@(#diplomas.public.list.filter.all)</a>
+		<a href="@{repository.filterUrls.standard}" class="button@{if repository.typeFilter == 'standard'} is-link is-selected@{fi}">@(#diplomas.type.standard.short)</a>
+		<a href="@{repository.filterUrls.challenge}" class="button@{if repository.typeFilter == 'challenge'} is-link is-selected@{fi}">@(#diplomas.type.challenge.short)</a>
+	</div>
+
+	@{if repository.showUnownedFilter}
+	<div class="buttons mb-4">
+		<a href="@{repository.filterUrls.unownedToggle}" class="button is-small@{if repository.unownedFilter} is-warning is-selected@{fi}">
+			<span class="icon"><i class="fas fa-eye-slash"></i></span>
+			<span>@(#diplomas.public.list.filter.unowned)</span>
+		</a>
+	</div>
+	@{fi}
+
+	@{if !repository.diplomas.length}
+	<p class="has-text-grey">@{repository.emptyMessage}</p>
+	@{else}
+	<div class="columns is-multiline">
+		@{foreach d in repository.diplomas}
+		<div class="column is-4">
+			<a href="/diplomas/@{d.id}" class="box diploma-card">
+				@{if d.stampType}
+				<span class="diploma-stamp is-@{d.stampType}">@{d.stampLabel}</span>
+				@{fi}
+				@{if d.hasImage}
+				<figure class="image is-4by3 mb-3">
+					<img src="/uploads/diplomas/@{d.id}/blank-watermarked" alt="@{d.name}">
+				</figure>
+				@{fi}
+				@{if d.isChallenge}
+				<span class="tag is-link mb-2">@(#diplomas.type.challenge.short)</span>
+				@{else}
+				<span class="tag is-light mb-2">@(#diplomas.type.standard.short)</span>
+				@{fi}
+				@{if d.ownedStatus == 'inprogress'}
+				<span class="tag is-warning mb-2">@(#diplomas.public.list.owned.inprogress)</span>
+				@{fi}
+				<p class="title is-5">@{d.name}</p>
+				<p class="is-size-7 mt-2"><i class="fas fa-clock"></i> @{d.deadlineText}</p>
+				<p class="is-size-7"><i class="fas fa-tag"></i> @{d.feeText}</p>
+				@{if d.managerText}
+				<p class="is-size-7"><i class="fas fa-user"></i> @{d.managerText}</p>
+				@{fi}
+				<span class="button is-small is-link is-light mt-2">@(#diplomas.public.list.details) →</span>
+			</a>
+		</div>
+		@{end}
+	</div>
+	@{fi}
+</div>

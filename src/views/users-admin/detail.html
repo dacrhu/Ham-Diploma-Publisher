@@ -1,0 +1,69 @@
+<div class="box" id="box_user_detail" data-id="@{repository.userId}">
+	<a href="/admin/users" class="is-size-7">@(#users.admin.detail.back)</a>
+	<h1 class="title is-4 mt-2" id="detail_title" data-template='@(#users.admin.detail.title)'>@(#users.admin.detail.title)</h1>
+
+	<h2 class="title is-6 mt-4">@(#users.admin.detail.section.profile)</h2>
+
+	<div class="table-container"
+		data-status-active='@(#users.admin.status.active)'
+		data-status-disabled='@(#users.admin.status.disabled)'
+		data-status-pending_verification='@(#users.admin.status.pending_verification)'
+		data-disable-confirm='@(#users.admin.disable.confirm)'
+		data-enable-confirm='@(#users.admin.enable.confirm)'
+		data-mfa-enabled='@(#users.admin.detail.mfa.enabled)'
+		data-mfa-disabled='@(#users.admin.detail.mfa.disabled)'
+		data-permissions-manager='@(#users.admin.detail.permissions.manager)'
+		data-permissions-sa='@(#users.admin.detail.permissions.sa)'
+		data-permissions-none='@(#users.admin.detail.permissions.none)'
+		id="profile_info">
+	<table class="table is-fullwidth">
+		<tbody>
+			<tr><th>@(#users.admin.detail.field.email)</th><td id="field_email"></td></tr>
+			<tr><th>@(#users.admin.detail.field.name)</th><td id="field_name"></td></tr>
+			<tr><th>@(#users.admin.detail.field.callsign)</th><td id="field_callsign"></td></tr>
+			<tr><th>@(#users.admin.detail.field.country)</th><td id="field_country"></td></tr>
+			<tr><th>@(#users.admin.detail.field.address)</th><td id="field_address"></td></tr>
+			<tr><th>@(#users.admin.detail.field.language)</th><td id="field_language"></td></tr>
+			<tr><th>@(#users.admin.detail.field.status)</th><td id="field_status"></td></tr>
+			<tr><th>@(#users.admin.detail.field.permissions)</th><td id="field_permissions"></td></tr>
+			<tr><th>@(#users.admin.detail.field.mfa)</th><td id="field_mfa"></td></tr>
+			<tr><th>@(#users.admin.detail.field.created)</th><td id="field_created"></td></tr>
+		</tbody>
+	</table>
+	</div>
+
+	<button class="button is-danger is-hidden" id="button_disable">@(#users.admin.action.disable)</button>
+	<button class="button is-success is-hidden" id="button_enable">@(#users.admin.action.enable)</button>
+
+	<h2 class="title is-6 mt-5">@(#users.admin.detail.section.submissions)</h2>
+
+	<p class="has-text-grey is-hidden" id="notice_submissions_empty">@(#users.admin.detail.submissions.empty)</p>
+
+	<div class="table-container is-hidden" id="submissions_wrap">
+	<table class="table is-fullwidth is-striped"
+		data-action-detail='@(#diplomas.public.list.details)'
+		data-status-submitted='@(#submissions.status.submitted)'
+		data-status-rejected_auto='@(#submissions.status.rejected_auto)'
+		data-status-awaiting_qsl='@(#submissions.status.awaiting_qsl)'
+		data-status-pending_review='@(#submissions.status.pending_review)'
+		data-status-approved='@(#submissions.status.approved)'
+		data-status-rejected='@(#submissions.status.rejected)'
+		data-status-awaiting_payment='@(#submissions.status.awaiting_payment)'
+		data-status-paid='@(#submissions.status.paid)'
+		data-status-completed='@(#submissions.status.completed)'>
+		<thead>
+			<tr>
+				<th>@(#users.admin.detail.submissions.col.diploma)</th>
+				<th>@(#users.admin.detail.submissions.col.status)</th>
+				<th class="has-text-right">@(#users.admin.detail.submissions.col.points)</th>
+				<th>@(#users.admin.detail.submissions.col.created)</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody id="table_submissions"></tbody>
+	</table>
+	</div>
+</div>
+
+@{import('frontendhelper.js + common.js')}
+@{import('pages/users-admin-detail/00_init.js')}

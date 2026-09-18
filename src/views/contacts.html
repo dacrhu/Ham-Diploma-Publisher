@@ -1,0 +1,13 @@
+@{layout('layout')}
+
+<div class="box">
+	<h1 class="title is-4">@(#contacts.title)</h1>
+
+	@{if repository.contactsHtml}
+	<div class="content">
+		@{!repository.contactsHtml}
+	</div>
+	@{else}
+	<p class="has-text-grey">@(#contacts.empty)</p>
+	@{fi}
+</div>

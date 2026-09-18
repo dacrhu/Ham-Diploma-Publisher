@@ -1,0 +1,77 @@
+<div class="box">
+	<p><a href="/diplomas/@{repository.diploma._id}" class="is-size-7">← @(#diplomas.public.stats.back)</a></p>
+	<h1 class="title is-4 mt-2">@{repository.statsTitle}</h1>
+
+	<h2 class="title is-6">@(#diplomas.public.stats.summary.title)</h2>
+	<div class="columns has-text-centered mb-2">
+		<div class="column">
+			<p class="heading">@(#diplomas.zone.home)</p>
+			<p class="title is-4">@{repository.zoneCounts.home}</p>
+		</div>
+		<div class="column">
+			<p class="heading">@(#diplomas.zone.eu)</p>
+			<p class="title is-4">@{repository.zoneCounts.eu}</p>
+		</div>
+		<div class="column">
+			<p class="heading">@(#diplomas.zone.dx)</p>
+			<p class="title is-4">@{repository.zoneCounts.dx}</p>
+		</div>
+		<div class="column">
+			<p class="heading">@(#diplomas.public.stats.total)</p>
+			<p class="title is-4">@{repository.totalOwned}</p>
+		</div>
+	</div>
+
+	<hr>
+
+	<h2 class="title is-6">@(#diplomas.public.stats.list.title)</h2>
+
+	@{if !repository.rows.length}
+	<p class="has-text-grey">@(#diplomas.public.stats.empty)</p>
+	@{else}
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#diplomas.public.stats.col.serial)</th>
+				<th>@(#diplomas.public.stats.col.callsign)</th>
+				<th>@(#diplomas.public.stats.col.zone)</th>
+				@{if repository.showPoints}
+				<th>@(#diplomas.public.stats.col.points)</th>
+				@{fi}
+				@{if repository.showTier}
+				<th>@(#diplomas.public.stats.col.tier)</th>
+				@{fi}
+				<th>@(#diplomas.public.stats.col.date)</th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach r in repository.rows}
+			<tr>
+				<td>@{r.serialNumber}</td>
+				<td>@{r.callsign}</td>
+				<td>@{r.zoneLabel}</td>
+				@{if repository.showPoints}
+				<td>@{r.points}</td>
+				@{fi}
+				@{if repository.showTier}
+				<td>@{r.tierLabel}</td>
+				@{fi}
+				<td>@{r.dateText}</td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+
+	<nav class="pagination is-small">
+		@{if repository.hasPrev}
+		<a href="@{repository.prevUrl}" class="pagination-previous">@(#diplomas.public.stats.pagination.prev)</a>
+		@{fi}
+		@{if repository.hasNext}
+		<a href="@{repository.nextUrl}" class="pagination-next">@(#diplomas.public.stats.pagination.next)</a>
+		@{fi}
+	</nav>
+	<p class="has-text-grey is-size-7 mt-2">@{repository.pageText}</p>
+	@{fi}
+</div>

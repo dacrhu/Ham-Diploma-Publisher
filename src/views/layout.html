@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html data-theme="light" lang="@{controller.language}">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<meta name="robots" content="all,follow" />
+	<title>@{repository.siteTitle}</title>
+	<link rel="icon" href="/favicon.ico" type="image/x-icon" />
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+	@{import('head', 'bulma.min.css', 'custom.css')}
+</head>
+
+<body>
+
+	<div class="columns m-0">
+		<div class="column is-2 aside hero is-fullheight">
+			<aside class="menu has-background-white-ter p-4" id="menu_main">
+				<a href="/" class="has-text-dark sidebar-brand">
+					@{if repository.hasSiteLogo}
+					<img class="sidebar-logo" src="/uploads/site/logo?v=@{repository.siteAssetVersion}" alt="@{repository.siteTitle}">
+					@{fi}
+					<p class="title is-5">@{repository.siteTitle}</p>
+				</a>
+
+				<ul class="menu-list">
+					<li><a href="/"><i class="fas fa-house"></i> @(#menu.home)</a></li>
+					<li><a href="/diplomas"><i class="fas fa-award"></i> @(#menu.diplomas)</a></li>
+					<li><a href="/contacts"><i class="fas fa-address-book"></i> @(#menu.contacts)</a></li>
+				</ul>
+
+				@{if user}
+				<p class="menu-label">@(#menu.account)</p>
+				<ul class="menu-list">
+					<li><a href="/account"><i class="fas fa-user"></i> @(#menu.profile)</a></li>
+					<li><a href="/submissions"><i class="fas fa-folder-open"></i> @(#menu.my.submissions)</a></li>
+					@{if user.sa || user.permissions.indexOf('manager') !== -1}
+					<li><a href="/admin/diplomas"><i class="fas fa-award"></i> @(#menu.admin.diplomas)</a></li>
+					<li><a href="/admin/submissions"><i class="fas fa-clipboard-check"></i> @(#menu.admin.review)</a></li>
+					<li><a href="/admin/settings"><i class="fas fa-tools"></i> @(#menu.admin)</a></li>
+					@{fi}
+					@{if user.sa}
+					<li><a href="/admin/users"><i class="fas fa-users"></i> @(#menu.admin.users)</a></li>
+					@{fi}
+					<li><a href="/logout"><i class="fas fa-right-from-bracket"></i> @(#menu.logout)</a></li>
+				</ul>
+				@{else}
+				<p class="menu-label">@(#menu.account)</p>
+				<ul class="menu-list">
+					<li><a href="/login"><i class="fas fa-right-to-bracket"></i> @(#menu.login)</a></li>
+					<li><a href="/register"><i class="fas fa-user-plus"></i> @(#menu.register)</a></li>
+				</ul>
+				@{fi}
+
+				<p class="menu-label">@(#menu.language)</p>
+				<div class="lang-switcher">
+					<a href="/lang/hu" class="lang-btn@{if language == 'hu'} lang-active@{fi}"><img src="/flags/hu.svg" alt="HU"> Magyar</a>
+					<a href="/lang/en" class="lang-btn@{if language == 'en'} lang-active@{fi}"><img src="/flags/gb.svg" alt="EN"> English</a>
+					<a href="/lang/de" class="lang-btn@{if language == 'de'} lang-active@{fi}"><img src="/flags/de.svg" alt="DE"> Deutsch</a>
+				</div>
+
+				<p class="is-size-7 mt-5" id="version">v@{CONF.version}</p>
+			</aside>
+		</div>
+		<div class="column is-10 messages is-fullheight p-6" id="body_main">
+			@{body}
+		</div>
+	</div>
+
+</body>
+
+</html>

@@ -1,0 +1,17 @@
+<div class="box">
+	@{if repository.hasBanner}
+	<figure class="mb-4">
+		<img class="site-banner" src="/uploads/site/banner?v=@{repository.bannerVersion}" alt="@{repository.siteTitle}">
+	</figure>
+	@{fi}
+	<h1 class="title is-spaced">@{repository.siteTitle}</h1>
+	@{foreach p in repository.welcomeParagraphs}
+	<p class="subtitle">@{p}</p>
+	@{end}
+
+	<hr>
+
+	<h2 class="title is-5">@(#diplomas.home.teaser.title)</h2>
+	<p>@(#diplomas.home.teaser.text)</p>
+	<a class="button is-primary" href="/diplomas">@(#diplomas.home.teaser.button)</a>
+</div>

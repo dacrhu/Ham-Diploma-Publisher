@@ -1,0 +1,7 @@
+src/node_modules
+src/tmp
+src/private/*
+!src/private/.gitkeep
+docker
+docs
+.git

@@ -1,0 +1,478 @@
+<div class="box" id="box_diploma_edit" data-id="@{repository.id}">
+	<h1 class="title is-4" id="page_title">@(#diplomas.admin.new)</h1>
+
+	<div class="tabs is-boxed">
+		<ul>
+			<li class="tab is-active" data-id="tab_basic"><a>@(#diplomas.tab.basic)</a></li>
+			<li class="tab" data-id="tab_rules"><a><span id="tab_rules_label" data-challenge-label='@(#diplomas.tab.challenge)'>@(#diplomas.tab.rules)</span></a></li>
+			<li class="tab" data-id="tab_payment"><a>@(#diplomas.tab.payment)</a></li>
+			<li class="tab" data-id="tab_overlay"><a>@(#diplomas.tab.overlay)</a></li>
+		</ul>
+	</div>
+
+	<form id="form_diploma">
+		<input type="hidden" id="input_id" name="id">
+
+		<!-- ===== Alapadatok ===== -->
+		<div id="tab_basic">
+			<div class="field">
+				<label class="label">@(#diplomas.name.label)</label>
+				<input class="input" type="text" name="name" id="input_name" required>
+			</div>
+
+			<div class="field">
+				<label class="label">@(#diplomas.description.label)</label>
+				<textarea class="textarea" name="description" id="input_description" rows="3"></textarea>
+			</div>
+
+			<div class="field">
+				<label class="label">@(#diplomas.type.label)</label>
+				<div class="control">
+					<div class="select">
+						<select id="select_diploma_type">
+							<option value="standard">@(#diplomas.type.standard)</option>
+							<option value="challenge">@(#diplomas.type.challenge)</option>
+						</select>
+					</div>
+				</div>
+				<p class="help">@(#diplomas.type.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="label">@(#diplomas.deadline.label)</label>
+				<div class="control">
+					<label class="radio">
+						<input type="radio" name="deadlineType" value="continuous" checked> @(#diplomas.deadline.continuous)
+					</label>
+					<label class="radio ml-4">
+						<input type="radio" name="deadlineType" value="deadline"> @(#diplomas.deadline.fixed)
+					</label>
+				</div>
+			</div>
+
+			<div class="field is-hidden" id="field_deadline_date">
+				<label class="label">@(#diplomas.deadline.date.label)</label>
+				<input class="input" type="date" name="deadlineDate" id="input_deadline_date">
+			</div>
+
+			<div class="columns is-desktop">
+				<div class="field column is-narrow">
+					<label class="label">@(#diplomas.status.label)</label>
+					<div class="control">
+						<div class="select">
+							<select name="status" id="select_status">
+								<option value="draft">@(#diplomas.status.draft)</option>
+								<option value="active">@(#diplomas.status.active)</option>
+								<option value="archived">@(#diplomas.status.archived)</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="field column is-narrow">
+					<label class="label">@(#diplomas.serial.start.label)</label>
+					<input class="input" type="number" name="serialStart" id="input_serial_start" min="1" value="1">
+				</div>
+				<div class="field column">
+					<label class="label">@(#diplomas.manager.label)</label>
+					<div class="control">
+						<div class="select">
+							<select id="select_manager_id" @{if !user.sa}disabled@{fi}>
+								<option value="">@(#diplomas.manager.none)</option>
+							</select>
+						</div>
+					</div>
+					<p class="help">@(#diplomas.manager.help)</p>
+				</div>
+			</div>
+
+			<hr>
+
+			<div class="field">
+				<label class="label">@(#diplomas.blank.label)</label>
+				<p class="help mb-2">@(#diplomas.blank.help)</p>
+				<div class="blank-preview mb-3 is-hidden" id="blank_preview_wrap">
+					<img id="blank_preview_img" src="" alt="blank">
+				</div>
+				<div class="file has-name">
+					<label class="file-label">
+						<input class="file-input" type="file" id="input_blank_file" accept="image/*">
+						<span class="file-cta">
+							<span class="file-icon"><i class="fas fa-upload"></i></span>
+							<span class="file-label">@(#diplomas.blank.choose)</span>
+						</span>
+						<span class="file-name" id="blank_file_name">—</span>
+					</label>
+				</div>
+				<p class="help" id="blank_upload_status" data-savefirst='@(#diplomas.blank.savefirst)' data-error='@(#diplomas.blank.error)'></p>
+			</div>
+		</div>
+
+		<!-- ===== Szabályok / Kihívás ===== -->
+		<div id="tab_rules" class="is-hidden">
+		<div id="rules_standard_block">
+			<div class="field">
+				<label class="label">@(#diplomas.rulemode.label)</label>
+				<div class="control">
+					<label class="radio">
+						<input type="radio" name="ruleMode" value="checklist" checked> @(#diplomas.rulemode.checklist)
+					</label>
+					<label class="radio ml-4">
+						<input type="radio" name="ruleMode" value="points"> @(#diplomas.rulemode.points)
+					</label>
+				</div>
+				<p class="help">@(#diplomas.rulemode.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="label">@(#diplomas.duplicate.label)</label>
+				<div class="control">
+					<div class="select">
+						<select name="duplicatePolicy" id="select_duplicate_policy">
+							<option value="allowed">@(#diplomas.duplicate.allowed)</option>
+							<option value="per_band_mode" selected>@(#diplomas.duplicate.per_band_mode)</option>
+							<option value="once">@(#diplomas.duplicate.once)</option>
+						</select>
+					</div>
+				</div>
+				<p class="help">@(#diplomas.duplicate.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="label is-small">@(#diplomas.allowedbands.label)</label>
+				<input class="input" type="text" id="input_allowed_bands" list="band_values_datalist" placeholder="@(#diplomas.allowedbands.placeholder)">
+				<p class="help">@(#diplomas.allowedbands.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="checkbox">
+					<input type="checkbox" id="input_repeater_allowed" checked> @(#diplomas.repeater.allowed.label)
+				</label>
+				<p class="help">@(#diplomas.repeater.allowed.help)</p>
+			</div>
+
+			<div class="field" id="repeater_points_field">
+				<label class="label is-small">@(#diplomas.repeater.points.label)</label>
+				<input class="input" style="max-width: 120px;" type="number" id="input_repeater_points" min="0" value="0">
+				<p class="help">@(#diplomas.repeater.points.help)</p>
+			</div>
+
+			<div class="table-container">
+			<table class="table is-fullwidth" id="table_match_rules">
+				<thead>
+					<tr>
+						<th>@(#diplomas.rule.field)</th>
+						<th>@(#diplomas.rule.operator)</th>
+						<th>@(#diplomas.rule.value)</th>
+						<th class="rule-points-col">@(#diplomas.rule.points)</th>
+						<th>@(#diplomas.rule.label)</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="match_rules_body"></tbody>
+			</table>
+			</div>
+			<button type="button" class="button is-small" id="button_add_rule">
+				<span class="icon"><i class="fas fa-plus"></i></span>
+				<span>@(#diplomas.rule.add)</span>
+			</button>
+			<p class="help mt-2">@(#diplomas.rule.regex.hint)</p>
+			<p class="help">@(#diplomas.rule.mode.hint)</p>
+			<p class="help">@(#diplomas.rule.band.hint)</p>
+			<datalist id="mode_values_datalist"></datalist>
+			<datalist id="mode_groups_datalist"></datalist>
+			<datalist id="band_values_datalist"></datalist>
+			<datalist id="band_groups_datalist"></datalist>
+
+			<hr>
+
+			<div id="zone_thresholds_block">
+				<div id="zone_flat_thresholds">
+					<label class="label">@(#diplomas.zone.label)</label>
+					<p class="help mb-2">@(#diplomas.zone.help)</p>
+					<div class="columns is-desktop">
+						<div class="field column">
+							<label class="label is-small">@(#diplomas.zone.home)</label>
+							<input class="input" type="number" name="zoneThresholdsHome" id="input_zone_home" min="0">
+						</div>
+						<div class="field column">
+							<label class="label is-small">@(#diplomas.zone.eu)</label>
+							<input class="input" type="number" name="zoneThresholdsEu" id="input_zone_eu" min="0">
+						</div>
+						<div class="field column">
+							<label class="label is-small">@(#diplomas.zone.dx)</label>
+							<input class="input" type="number" name="zoneThresholdsDx" id="input_zone_dx" min="0">
+						</div>
+					</div>
+				</div>
+				<p class="help is-hidden" id="zone_flat_thresholds_tiers_note">@(#diplomas.zone.tiers.note)</p>
+				<div class="field">
+					<label class="label is-small">@(#diplomas.zone.homecountry)</label>
+					<p class="help mb-2">@(#diplomas.zone.homecountry.help)</p>
+					<div class="control">
+						<div class="select">
+							<select name="homeCountry" id="select_home_country">
+								@{foreach c in repository.countries}
+								<option value="@{c.code}">@{c.name}</option>
+								@{end}
+							</select>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<hr>
+
+			<div id="tiers_block">
+				<div class="field">
+					<label class="checkbox">
+						<input type="checkbox" id="input_tiers_enabled"> @(#diplomas.tiers.enabled.label)
+					</label>
+					<p class="help">@(#diplomas.tiers.enabled.help)</p>
+				</div>
+
+				<div id="tiers_config" class="is-hidden">
+					<div class="field">
+						<label class="checkbox">
+							<input type="checkbox" id="input_categories_enabled"> @(#diplomas.tiers.categories.label)
+						</label>
+						<p class="help">@(#diplomas.tiers.categories.help)</p>
+						<p class="help">@(#diplomas.tiers.categories.groups.hint)</p>
+					</div>
+
+					<div id="categories_body"></div>
+
+					<button type="button" class="button is-small" id="button_add_category">
+						<span class="icon"><i class="fas fa-plus"></i></span>
+						<span>@(#diplomas.tiers.category.add)</span>
+					</button>
+				</div>
+			</div>
+
+			<hr>
+
+			<div class="field">
+				<label class="label">@(#diplomas.qsl.label)</label>
+				<p class="help mb-2">@(#diplomas.qsl.help)</p>
+				<input class="input" style="max-width: 120px;" type="number" name="qslSampleCount" id="input_qsl_sample_count" min="0" value="0">
+			</div>
+
+			<div class="field">
+				<label class="checkbox">
+					<input type="checkbox" name="autoApprove" id="input_auto_approve"> @(#diplomas.autoapprove.label)
+				</label>
+				<p class="help">@(#diplomas.autoapprove.help)</p>
+			</div>
+		</div>
+
+		<div id="rules_challenge_block" class="is-hidden">
+			<p class="notification is-warning is-light">@(#diplomas.challenge.notice)</p>
+
+			<div class="field">
+				<label class="label">@(#diplomas.challenge.targetfield.label)</label>
+				<div class="control">
+					<div class="select">
+						<select id="select_challenge_target_field">
+							<option value="call">@(#diplomas.challenge.targetfield.call)</option>
+							<option value="country">@(#diplomas.challenge.targetfield.country)</option>
+							<option value="comment">@(#diplomas.challenge.targetfield.comment)</option>
+						</select>
+					</div>
+				</div>
+				<p class="help">@(#diplomas.challenge.targetfield.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="label is-small">@(#diplomas.challenge.allowedbands.label)</label>
+				<input class="input" type="text" id="input_challenge_allowed_bands" list="band_values_datalist" placeholder="@(#diplomas.challenge.allowedbands.placeholder)">
+				<p class="help">@(#diplomas.challenge.allowedbands.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="label is-small">@(#diplomas.challenge.allowedmodes.label)</label>
+				<input class="input" type="text" id="input_challenge_allowed_modes" list="mode_values_datalist" placeholder="@(#diplomas.challenge.allowedmodes.placeholder)">
+				<p class="help">@(#diplomas.challenge.allowedmodes.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="label">@(#diplomas.challenge.pool.label)</label>
+				<p class="help mb-2">@(#diplomas.challenge.pool.help)</p>
+				<div class="table-container">
+				<table class="table is-fullwidth is-narrow" id="table_challenge_pool">
+					<thead>
+						<tr>
+							<th>@(#diplomas.challenge.pool.col.value)</th>
+							<th>@(#diplomas.challenge.pool.col.label)</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody id="challenge_pool_body"></tbody>
+				</table>
+				</div>
+				<button type="button" class="button is-small" id="button_add_challenge_pool_item">
+					<span class="icon"><i class="fas fa-plus"></i></span>
+					<span>@(#diplomas.challenge.pool.add)</span>
+				</button>
+			</div>
+
+			<hr>
+
+			<div class="columns is-desktop">
+				<div class="field column is-narrow">
+					<label class="label">@(#diplomas.challenge.drawperround.label)</label>
+					<input class="input" style="max-width: 120px;" type="number" id="input_challenge_draw_per_round" min="1" value="1">
+				</div>
+				<div class="field column is-narrow">
+					<label class="label">@(#diplomas.challenge.totalrounds.label)</label>
+					<input class="input" style="max-width: 120px;" type="number" id="input_challenge_total_rounds" min="1" value="1">
+				</div>
+				<div class="field column is-narrow">
+					<label class="label">@(#diplomas.challenge.deadlinedays.label)</label>
+					<input class="input" style="max-width: 120px;" type="number" id="input_challenge_deadline_days" min="1" placeholder="@(#diplomas.challenge.deadlinedays.placeholder)">
+				</div>
+				<div class="field column is-narrow">
+					<label class="label">@(#diplomas.challenge.qsl.label)</label>
+					<input class="input" style="max-width: 120px;" type="number" id="input_challenge_qsl_sample_count" min="0" value="0">
+				</div>
+			</div>
+
+			<div class="field">
+				<label class="checkbox">
+					<input type="checkbox" id="input_challenge_allow_repeat"> @(#diplomas.challenge.allowrepeat.label)
+				</label>
+				<p class="help">@(#diplomas.challenge.allowrepeat.help)</p>
+			</div>
+		</div>
+		</div>
+
+		<!-- ===== Fizetés ===== -->
+		<div id="tab_payment" class="is-hidden">
+			<div class="columns is-desktop">
+				<div class="field column">
+					<label class="label">@(#diplomas.fee.pdf.label)</label>
+					<input class="input" type="number" name="pdfFee" id="input_pdf_fee" min="0" step="0.01" value="0">
+				</div>
+				<div class="field column">
+					<label class="label">@(#diplomas.fee.physical.label)</label>
+					<input class="input" type="number" name="physicalFee" id="input_physical_fee" min="0" step="0.01" value="0">
+				</div>
+				<div class="field column">
+					<label class="label">@(#diplomas.fee.currency.label)</label>
+					<div class="control">
+						<div class="select">
+							<select name="currency" id="select_currency">
+								<option value="EUR">EUR</option>
+								<option value="USD">USD</option>
+								<option value="HUF">HUF</option>
+							</select>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="field">
+				<label class="checkbox">
+					<input type="checkbox" name="physicalOfferEnabled" id="input_physical_offer_enabled"> @(#diplomas.physical.enabled.label)
+				</label>
+			</div>
+
+			<div class="field">
+				<label class="label">@(#diplomas.payment.methods.label)</label>
+				<label class="checkbox mr-4">
+					<input type="checkbox" name="paymentMethods" value="stripe" class="payment-method-cb"> Stripe
+				</label>
+				<label class="checkbox mr-4">
+					<input type="checkbox" name="paymentMethods" value="paypal" class="payment-method-cb"> PayPal
+				</label>
+				<label class="checkbox">
+					<input type="checkbox" name="paymentMethods" value="bank_transfer" class="payment-method-cb" id="input_bank_transfer_cb"> @(#diplomas.payment.method.bank)
+				</label>
+			</div>
+
+			<div id="bank_transfer_fields" class="is-hidden">
+				<div class="field">
+					<label class="label is-small">@(#diplomas.bank.accountname.label)</label>
+					<input class="input" type="text" name="bankAccountName" id="input_bank_account_name">
+				</div>
+				<div class="field">
+					<label class="label is-small">@(#diplomas.bank.iban.label)</label>
+					<input class="input" type="text" name="bankIban" id="input_bank_iban">
+				</div>
+				<div class="field">
+					<label class="label is-small">@(#diplomas.bank.note.label)</label>
+					<input class="input" type="text" name="bankNote" id="input_bank_note">
+				</div>
+			</div>
+		</div>
+
+		<!-- ===== Elrendezés (overlay) ===== -->
+		<div id="tab_overlay" class="is-hidden">
+			<p class="help mb-3">@(#diplomas.overlay.help)</p>
+
+			<div class="columns is-desktop">
+				<div class="field column is-narrow">
+					<label class="label is-small">@(#diplomas.overlay.font.family.label)</label>
+					<div class="control">
+						<div class="select">
+							<select id="select_overlay_font_family">
+								<option value="liberation-sans" style="font-family:'Liberation Sans',Arial,sans-serif;">@(#diplomas.overlay.font.liberationSans)</option>
+								<option value="liberation-serif" style="font-family:'Liberation Serif','Times New Roman',serif;" selected>@(#diplomas.overlay.font.liberationSerif)</option>
+								<option value="eb-garamond" style="font-family:'EB Garamond',Garamond,serif;">@(#diplomas.overlay.font.ebGaramond)</option>
+								<option value="dancing-script" style="font-family:'Dancing Script',cursive;">@(#diplomas.overlay.font.dancingScript)</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="field column is-narrow">
+					<label class="label is-small">@(#diplomas.overlay.font.size.label)</label>
+					<input class="input" type="number" id="input_overlay_font_size" min="6" max="200" value="24">
+				</div>
+			</div>
+			<p class="help mb-3">@(#diplomas.overlay.font.help)</p>
+
+			<div class="field" id="overlay_toggles">
+				<label class="checkbox mr-4"><input type="checkbox" class="overlay-toggle" value="diplomaName" checked> @(#diplomas.overlay.field.diplomaName)</label>
+				<label class="checkbox mr-4"><input type="checkbox" class="overlay-toggle" value="applicantName" checked> @(#diplomas.overlay.field.applicantName)</label>
+				<label class="checkbox mr-4"><input type="checkbox" class="overlay-toggle" value="callsign" checked> @(#diplomas.overlay.field.callsign)</label>
+				<label class="checkbox mr-4"><input type="checkbox" class="overlay-toggle" value="points" checked> @(#diplomas.overlay.field.points)</label>
+				<label class="checkbox mr-4"><input type="checkbox" class="overlay-toggle" value="serialNumber" checked> @(#diplomas.overlay.field.serialNumber)</label>
+				<label class="checkbox mr-4"><input type="checkbox" class="overlay-toggle" value="issueDate" checked> @(#diplomas.overlay.field.issueDate)</label>
+				<label class="checkbox mr-4"><input type="checkbox" class="overlay-toggle" value="categoryLabel"> @(#diplomas.overlay.field.categoryLabel)</label>
+				<label class="checkbox mr-4"><input type="checkbox" class="overlay-toggle" value="tierLabel"> @(#diplomas.overlay.field.tierLabel)</label>
+				<label class="checkbox"><input type="checkbox" class="overlay-toggle" value="zoneLabel"> @(#diplomas.overlay.field.zoneLabel)</label>
+			</div>
+
+			<div class="overlay-editor is-hidden" id="overlay_editor_wrap">
+				<img id="overlay_editor_img" src="" alt="blank">
+			</div>
+			<p class="is-hidden has-text-grey" id="overlay_no_image_notice">@(#diplomas.overlay.noimage)</p>
+
+			<button type="button" class="button mt-3 is-hidden" id="button_preview_render">
+				<span class="icon"><i class="fas fa-eye"></i></span>
+				<span>@(#diplomas.overlay.preview.button)</span>
+			</button>
+			<p class="help is-danger is-hidden" id="preview_render_error">@(#diplomas.overlay.preview.error)</p>
+		</div>
+
+		<div class="modal" id="preview_modal">
+			<div class="modal-background"></div>
+			<div class="modal-content">
+				<p class="title is-6 has-text-white">@(#diplomas.overlay.preview.title)</p>
+				<p class="image">
+					<img id="preview_modal_img" src="" alt="preview">
+				</p>
+			</div>
+			<button class="modal-close is-large" aria-label="@(#diplomas.overlay.preview.close)" id="preview_modal_close"></button>
+		</div>
+
+		<div class="notification is-danger is-hidden mt-4" id="notification_error"></div>
+		<div class="notification is-success is-hidden mt-4" id="notification_success">@(#diplomas.saved)</div>
+
+		<div class="field mt-4">
+			<button class="button is-primary" type="submit" id="button_save">@(#diplomas.save)</button>
+			<a class="button" href="/admin/diplomas">@(#btn.cancel)</a>
+		</div>
+	</form>
+</div>
+
+@{import('frontendhelper.js + common.js')}
+@{import('pages/diplomas-admin-edit/00_init.js + pages/diplomas-admin-edit/05_manager.js + pages/diplomas-admin-edit/10_blank.js + pages/diplomas-admin-edit/20_rules.js + pages/diplomas-admin-edit/21_autoapprove.js + pages/diplomas-admin-edit/22_challenge.js + pages/diplomas-admin-edit/25_tiers.js + pages/diplomas-admin-edit/30_payment.js + pages/diplomas-admin-edit/40_overlay.js + pages/diplomas-admin-edit/50_save.js + pages/diplomas-admin-edit/99_load.js')}

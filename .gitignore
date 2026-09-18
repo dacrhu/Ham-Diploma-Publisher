@@ -1,0 +1,42 @@
+# Dependencies - regenerated with `npm install` (not `npm ci`), the
+# lockfile is intentionally not committed (see docker/start-dev.sh).
+src/node_modules/
+src/package-lock.json
+
+# Total.js runtime artifacts - auto-generated on start, not source.
+src/tmp/
+src/index.js.json
+src/index.js.map
+src/index.pid
+
+# Docker sometimes creates this as an empty, root-owned file when setting up
+# the nested `./start-dev.sh:/app/start-dev.sh` bind mount on top of the
+# `../src:/app` mount (see docker/docker-compose-dev.yml) - it has nothing
+# to do with the real script at docker/start-dev.sh.
+src/start-dev.sh
+
+# Uploaded files (local storage driver, see modules/storage-local.js) -
+# never committed; the directory itself is kept via .gitkeep so a fresh
+# checkout has somewhere to write to.
+src/private/*
+!src/private/.gitkeep
+
+# Environment-specific config/secrets (copy the .example template next to
+# each of these and fill it in - see the README.md "Configuration" section).
+docker/dev.env
+src/config
+
+# Production build output (see Dockerfile: `COPY build/ .`).
+build/
+
+# Release archives built by .github/workflows/release.yml.
+/dist/
+
+# Regeneratable documentation artifacts (see docs/USER_DOC.md and
+# tools/screenshot-doc/README.md).
+docs/user-manual/*.pdf
+tools/screenshot-doc/output/.demo-submission-id
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db

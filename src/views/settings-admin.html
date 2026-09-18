@@ -1,0 +1,141 @@
+<div class="box" style="max-width: 640px;">
+	<h1 class="title is-4">@(#settings.title)</h1>
+
+	<form id="form_settings">
+		<h2 class="title is-6">@(#settings.appearance.section)</h2>
+
+		<div class="field">
+			<label class="label">@(#settings.appearance.logo.label)</label>
+			<div class="control">
+				<div class="logo-preview mb-3 is-hidden" id="logo_preview_wrap">
+					<img id="logo_preview_img" src="" alt="logo">
+				</div>
+				<div class="file has-name">
+					<label class="file-label">
+						<input class="file-input" type="file" id="input_logo_file" accept="image/*">
+						<span class="file-cta">
+							<span class="file-icon"><i class="fas fa-upload"></i></span>
+							<span class="file-label">@(#settings.appearance.logo.choose)</span>
+						</span>
+						<span class="file-name" id="logo_file_name">—</span>
+					</label>
+				</div>
+				<p class="help" id="logo_upload_status" data-error='@(#settings.appearance.logo.error)'></p>
+			</div>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#settings.appearance.banner.label)</label>
+			<div class="control">
+				<div class="banner-preview mb-3 is-hidden" id="banner_preview_wrap">
+					<img id="banner_preview_img" src="" alt="banner">
+				</div>
+				<div class="file has-name">
+					<label class="file-label">
+						<input class="file-input" type="file" id="input_banner_file" accept="image/*">
+						<span class="file-cta">
+							<span class="file-icon"><i class="fas fa-upload"></i></span>
+							<span class="file-label">@(#settings.appearance.banner.choose)</span>
+						</span>
+						<span class="file-name" id="banner_file_name">—</span>
+					</label>
+				</div>
+				<p class="help" id="banner_upload_status" data-error='@(#settings.appearance.banner.error)'></p>
+			</div>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#settings.appearance.sitetitle.label)</label>
+			<div class="control">
+				<input class="input" type="text" name="siteTitle" id="input_site_title" maxlength="200">
+			</div>
+			<p class="help">@(#settings.appearance.sitetitle.help)</p>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#settings.appearance.defaultlanguage.label)</label>
+			<div class="control">
+				<div class="select">
+					<select name="defaultLanguage" id="select_default_language">
+						<option value="hu">Magyar</option>
+						<option value="en">English</option>
+						<option value="de">Deutsch</option>
+					</select>
+				</div>
+			</div>
+			<p class="help">@(#settings.appearance.defaultlanguage.help)</p>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#settings.appearance.welcometext.label)</label>
+			<div class="control">
+				<textarea class="textarea" name="siteWelcomeText" id="textarea_site_welcometext" rows="5" maxlength="4000"></textarea>
+			</div>
+			<p class="help">@(#settings.appearance.welcometext.help)</p>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#settings.contacts.label)</label>
+			<div class="control">
+				<textarea class="textarea is-family-monospace" name="contactsHtml" id="textarea_contacts_html" rows="8" maxlength="10000"></textarea>
+			</div>
+			<p class="help">@(#settings.contacts.help)</p>
+		</div>
+
+		<hr>
+
+		<h2 class="title is-6">@(#settings.mfa.section)</h2>
+
+		<div class="field">
+			<label class="label">@(#settings.mfa.user.label)</label>
+			<div class="control">
+				<div class="select">
+					<select name="mfaPolicyUser" id="select_mfa_policy_user">
+						<option value="disabled">@(#settings.mfa.policy.disabled)</option>
+						<option value="optional">@(#settings.mfa.policy.optional)</option>
+						<option value="required">@(#settings.mfa.policy.required)</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#settings.mfa.manager.label)</label>
+			<div class="control">
+				<div class="select">
+					<select name="mfaPolicyManager" id="select_mfa_policy_manager">
+						<option value="disabled">@(#settings.mfa.policy.disabled)</option>
+						<option value="optional">@(#settings.mfa.policy.optional)</option>
+						<option value="required">@(#settings.mfa.policy.required)</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<div class="field">
+			<label class="label">@(#settings.mfa.methods.label)</label>
+			<label class="checkbox mr-4">
+				<input type="checkbox" name="mfaMethodsAllowed" value="email"> @(#mfa.setup.method.email)
+			</label>
+			<label class="checkbox">
+				<input type="checkbox" name="mfaMethodsAllowed" value="totp"> @(#mfa.setup.method.totp)
+			</label>
+		</div>
+
+		<div class="notification is-success is-hidden" id="notification_success">@(#settings.saved)</div>
+
+		<div class="field mt-4">
+			<button class="button is-primary" type="submit" id="button_settings">
+				<span>@(#settings.submit)</span>
+			</button>
+		</div>
+	</form>
+
+	@{if user.sa}
+	<hr>
+	<p class="help">@(#settings.managers.moved.hint)</p>
+	@{fi}
+</div>
+
+@{import('frontendhelper.js + common.js')}
+@{import('pages/settings-admin/00_init.js + pages/settings-admin/20_logo.js + pages/settings-admin/21_banner.js')}

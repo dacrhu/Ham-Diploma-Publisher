@@ -1,0 +1,86 @@
+# CLAUDE.md
+
+This is the developer reference for this project (for humans and AI agents alike): architecture,
+conventions, and practical gotchas uncovered from the code. **See [README.md](README.md)** for
+what the software actually does (the product description, features, and how to run it).
+
+## Architecture
+
+Total.js 4, **flat** `src/` structure — no "module-X" directory prefixes, no modules, every feature has its own named files in the shared `controllers/`, `schemas/`, `views/` directories. The technology reference project: `/home/berci/GIT/GITEA/EHS/ehs4/` (Total.js 4 + Bulma + a custom MDB/REDIS wrapper + the frontendhelper.js pattern — the framework-level pieces were carried over/adapted from there).
+
+## Feature wiring pattern
+
+1. **Controller** (`src/controllers/<feature>-api.js` / `-view.js` / `-upload.js` / `-pdf.js`): route definitions, e.g.
+   `ROUTE('+GET /api/diplomas/{id} *Diplomas/Diplomas --> get');`
+2. **Schema** (`src/schemas/<feature>/<feature>.js`): `NEWSCHEMA('Feature/Feature', ...)` — this is where the business logic lives. Every action declares: `permissions: [...]` (when needed), `language: true`, an async function `($)` with MDB calls, a response via `$.callback(...)`, and an audit log entry via `FUNC.logger($, ...)`.
+3. **View** (`src/views/<feature>/...html`): HTML templates, under `layout.html` (with the menu) or `layout-nomenu.html` (login/register).
+4. **Frontend JS** (`src/public/js/pages/<feature>/`): numerically prefixed files determine load order (`00_init.js`, `10_common.js`, ... `99_startup.js`).
+
+## Database wrappers (global objects)
+
+- `MDB` (`src/modules/mongodb-wrapper.js`): `ObjectID`, `checkExist`, `findOne`, `find(db, coll, query, options, sort, limit, count, language)` — with `count=true` it returns `{countFull, data}` —, `insertOne`, `updateOne(..., upsert, set)` — `set=true` wraps the value in `$set` —, `deleteOne`, `deleteMany`, `aggregate`, `ensureIndexes`, `findOneAndUpdate`. On error the return value is `[{error}]` — ALWAYS check with `result[0] && result[0].error`, or with the `.acknowledged`/`.matchedCount` field.
+- `REDIS` (`src/modules/redis-wrapper.js`): `hset`, `hgetall`, `expire`, `del`. Redis DB indexes (see the `HDP_REDIS_DB_*` keys in `src/config`): MFA=1, password reset=2, session=3, email confirmation=4, registration captcha=5.
+- The DB name is always `process.env.MONGODB_DB_NAME` (`hdp`), collection names are camelCase (e.g. `submissions`, `diplomas`, `paymentevents`).
+
+## Auth and sessions
+
+After login, the session lives in Redis (`process.env.REDIS_DB_SESSION`): the key is the cookie value, fields: `_id`, `email`, `permissions` (comma-separated), `sa` (superadmin), `ua`, `language`. On every request `src/definitions/01_auth.js` checks the cookie, the User-Agent match, and the Redis session; permission checks happen through the schema actions' `permissions` field (native Total.js mechanism). **Important deviation from the EHS4 reference:** in this project, `01_auth.js` does NOT have a `DEBUG`-based auto-login bypass — the debug shortcut present in EHS4 was intentionally not carried over (security risk).
+
+**Nuance (added after step 8, at user request)**: this does NOT mean `DEBUG` may NEVER be used for any kind of leniency — `schemas/submissions/submissions.js`'s `isReviewerOf()` and `controllers/submissions.js`'s `view_detail` make an exception to the self-review ban (nobody may review their own submission) in `DEBUG` mode, so that a single test-manager account can be used to walk through the whole review flow. This differs from the forbidden pattern above IN THAT it is NOT an authentication bypass (the user is still logged in, the sa/managerId check still runs) — it only relaxes a BUSINESS RULE AFTER the permission check, and it never runs in production (`DEBUG=false`). If a similar `DEBUG`-based exception comes up next time, this distinction (auth bypass vs. relaxing a business rule after the permission check) is the deciding factor for whether it's acceptable.
+
+Roles: `sa` (superadmin, bootstrapped based on the `SUPERUSER_EMAIL` env var), the `manager` permission string (diploma management + review), and the base registered radio amateur user (no separate permission string, just being logged in).
+
+## Language files
+
+All user-facing text lives in `src/resources/hu.resource`, `en.resource`, `de.resource` (`key : value` format, hierarchical dot-separated keys, e.g. `diploma.rule.checklist`). Access: `RESOURCE(language, key)`. Default language: `hu`. **When adding new text, add it to ALL THREE resource files.**
+
+## Determining the language
+
+`src/definitions/02_localization.js`: cookie (`hdp_lang`) → `?language=` query param → default `hu`. The layout's language-switcher links call the `/lang/{code}` route (`src/controllers/language.js`), which sets the cookie — a bare `?language=` query is NOT enough, because the cookie takes priority in the LOCALIZE hook. On login, the user's `language` field is written into the language cookie.
+
+## Configuration
+
+`src/config` (gitignored — copy it from the committed `src/config.example` template before first run, see the README's "Configuration" section) holds the defaults: the `HDP_*`-prefixed keys, plus Total.js's own bare `secret`/`secretType`/`secretSalt`/`encryptKey` keys (session-cookie signing/encryption). `src/definitions/00_variables.js` loads every `HDP_*` key into `process.env` (without the prefix) and additionally lets `secret`/`encryptKey` specifically be overridden via the `SECRET`/`ENCRYPT_KEY` env vars (added for Docker/Kubernetes-friendliness — a K8s Secret can inject these without mounting/templating the `config` file itself). Under Docker, `docker/dev.env` (gitignored — copy it from `docker/dev.env.example`; keys WITHOUT the `HDP_` prefix) overrides the `HDP_*` defaults — but only if that key isn't already set in `process.env`. In every case, an environment variable takes priority over the file default.
+
+## Frontend helper
+
+`src/public/js/frontendhelper.js`: `feEventId` / `feEventClass` / `feEventSelector` (event binding), `feFormToJSON` (form → JSON, with checkbox arrays and visibility checks), `feFormReset`, `feGetCheckboxValues`, `feToTop` / `feToBottom`, `fePasswordRules`/`fePasswordValid`/`fePasswordChecklistBind`. Shared logic (pagination, menu, tab switching): `src/public/js/common.js`.
+
+## Development environment
+
+`docker/docker-compose-dev.yml` — four services: `hdp` (Node 22, 127.0.0.1:8000, started with `start-dev.sh`), `mongodb` (Mongo 6, host port 27018), `redis` (Redis 7, host port 6380), `mailhog` (SMTP for the containers on 1025, web mailbox at http://127.0.0.1:8026). Env: `docker/dev.env` (not version-controlled, copied from `dev.env.example`). Start: `docker compose -f docker/docker-compose-dev.yml up`.
+
+## Development conventions
+
+- where possible, we use classic "for" loops, not "foreach"
+- no hardcoded messages — everything is organized into the language files
+- minimal-dependency principle — we only add an npm package if writing it from scratch would be unreasonable (e.g. `puppeteer` for PDF, `qrcode` for QR code generation, the `stripe` SDK, `@aws-sdk/client-s3`); we write our own small modules where realistic (ADIF parser, TOTP, callsign/field matching)
+- performance and simple, understandable code matter, but not at all costs — spaghetti code is not tolerated
+- env vars for configuration, the `src/config` file for dev/default configuration
+
+## View-resolution trap (`self.view(...)`)
+
+For some top-level (non-subdirectory) controllers, Total.js automatically prefixes the `self.view(name)` call with a subdirectory matching the controller's own filename (e.g. in `controllers/diplomas-admin.js`, `self.view('list')` loads `views/diplomas-admin/list.html`) — elsewhere (e.g. `controllers/register.js`, `login.js`, `account.js`, `home.js`, `settings-admin.js`) this does NOT happen, and `self.view(name)` loads `views/name.html` (from the views root). No clear rule has been reverse-engineered from the framework's source so far (it's not about file depth, not about whether they mix in schema-based routes, and not about a matching/differing name — every variation had a counterexample). **Practical consequence**: when writing a new controller, do NOT manually add a subdirectory prefix to the `self.view(...)` call (e.g. don't write `self.view('diplomas-admin/list')`) — always try the bare filename first (`self.view('list')`), and if you get a "View ... not found" error (the error message shows the path it actually tried), that tells you whether that particular controller needs a prefix or not. The exact error is immediately visible in the Docker log (`docker logs hdp`).
+
+## Quote collision: `@(#key)` and CSS `font-family` inside an HTML attribute
+
+The same class of bug showed up in two DIFFERENT places, so it's recorded here as a general rule: if a resource string or a CSS value itself contains a quote character (e.g. `diplomas.admin.delete.confirm` literally contains `"{0}"`, or a font name like `"Dancing Script"`), and this gets inserted into an HTML attribute using the SAME quote type (`data-x="@(#key)"`) or into a string interpolation (`` style="...font-family:${cssVar};..." ``), the embedded quote **closes the outer attribute/string prematurely** — everything after it (the rest of the text, or a CSS `color` etc.) silently disappears or falls apart, with no error message. This does NOT throw a JS/server error — it's only observable in the browser, at runtime (`node --check` won't catch it). **Practical rule**: instead of `data-x="@(#key)"`, always use `data-x='@(#key)'` (single quotes) — resource strings are human-written Hungarian/English/German sentences, and they can easily contain `"`; and for CSS `font-family` string interpolation, always use `'Single Quotes'` around font names if the surrounding HTML attribute is double-quoted.
+
+## View template directives: close `@{if}` with `@{fi}`, NOT `@{end}`
+
+The Total.js view engine uses two different block-closing keywords, and they are NOT interchangeable: `@{foreach ...}` ... `@{end}` (see e.g. the country list in `views/diplomas-admin/edit.html`), but `@{if ...}` ... `@{fi}` (see `views/layout.html`). If you accidentally close an `@{if}` with `@{end}`, the view fails to compile with an **"Illegal return statement"** error and returns a 500 — this error shows up both in `docker logs hdp` and in the response body, but the error message itself doesn't point to the real cause (it doesn't say it's an `@{if}`/`@{end}` mismatch). There's also `@{else}`. **Practical consequence**: when writing a new `@{if}` block, always close it with `@{fi}`, and actually try loading the affected view in a browser/with curl (it's not enough to just syntax-check the JS files with `node --check` — this error only surfaces at view-compile time, at runtime).
+
+## View template trap: `@{repository.X == Y ? A : B}` inline ternary renders nothing
+
+The Total.js view engine's `view_is_assign()` helper (`node_modules/total4/internal.js`) scans a `@{...}` expression character by character for a bare `=`, and if it finds one, classifies the WHOLE expression as an assignment (it runs as `self.$set(...)`, which has NO output) — but it does NOT distinguish this from the `=` inside a `==`/`!=`/`<=`/`>=` COMPARISON operator. This ONLY happens if the expression starts with one of `view_prepare()`'s "special" keywords (`repository.`, `model.`, `M.`, `R.`, `G.`, `query.`, `global.`, `session.`, `user.`, `config.`, `controller.`, `body.`, etc.) — an expression using a loop variable (e.g. `x.foo == 'bar' ? a : b` from `@{foreach x in ...}`) is NOT affected. The bug throws NO error at all (neither at compile time nor at runtime) — the expression silently, unnoticeably always renders an empty string, regardless of the actual truth value of the condition (see the concrete case: the zone-based minimum score threshold + the diploma-list type-filter button, both from step 5, only noticed once the user actually looked at it in the browser). **Practical consequence**: NEVER write an inline ternary of the form `@{repository.X == Y ? A : B}` (or the same with any of the other special prefixes above) using `==`/`!=`/`<=`/`>=` in views. Instead EITHER use the `@{if}/@{else}/@{fi}` block syntax (that does NOT go through this code path, it's safe — e.g. `class="button@{if repository.typeFilter == 'all'} is-link is-selected@{fi}"`), OR compute the final result in the controller and pass it through the repository as a plain, already-resolved field (`self.repository.zoneHomeValue = ...`, and the view just outputs `@{repository.zoneHomeValue}`, with no `==` in it at all). This class of bug is NOT caught by `node --check` and produces no error in the browser either — it can only be noticed through visual inspection (or by grepping the rendered HTML) when a given field/CSS class never shows up.
+
+## Misc
+
+- Image/PDF rendering: Puppeteer was introduced earlier than planned, already in step 5 (`modules/certificate-renderer.js`, `CERT_RENDERER.render()`) — for producing a watermarked blank-certificate preview and a demo-data layout preview. The final PDF certificate generation for milestone 4 (`FUNC.pdfGenerator`) will build on the same module (using `page.pdf()` then, instead of a screenshot). **Docker dependency**: the Puppeteer-bundled Chromium is NOT installed (it would be downloaded during npm install, but it's ~300MB, and it wouldn't start anyway due to missing shared libs in the plain `node:22` image) — instead, a system Chromium is installed via apt (`docker/Dockerfile.dev`, and the prod `Dockerfile`), pointed to by the `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` env var (docker/dev.env). **Because of this, the dev `hdp` service now starts from a `build:` (`docker/Dockerfile.dev`), NOT from the plain `node:22` image** — if you change this, it needs to be rebuilt (`docker compose -f docker/docker-compose-dev.yml build hdp`), otherwise rendering crashes with an "error while loading shared libraries: libnspr4.so" error. The same Dockerfile also installs the fonts selectable for diploma text (apt: `fonts-liberation2`, `fonts-ebgaramond`, `fonts-dancingscript` — see `CERT_RENDERER.FONT_FAMILIES`); if you introduce a new font, the apt package needs to be added here (and to the prod `Dockerfile`) too, otherwise Chromium silently falls back to a system default. **A trap I ran into**: in `CERT_RENDERER.FONT_FAMILIES`'s CSS values, font names must use SINGLE quotes (`"'Dancing Script', cursive"`), NOT double — these get interpolated into an HTML `style="..."` attribute, which is itself double-quoted, and an embedded `"` would close the attribute prematurely, causing `font-family` (and every declaration after it in the chain, e.g. `color`) to silently, without any error, get lost — `font-size` (which comes earlier in the chain) still applies correctly, which is what makes the symptom misleading.
+- Sending email with the framework's global `MAIL()` function: `MAIL(address, subject, view_name, model, callback, language)`. The view is always a template made for this purpose (e.g. `src/views/login/email-verify.html`). In the template, the syntax is `@{model.fieldname}` — `{model.fieldname}` and `@(key)` **do not** work in email templates. Resource translation is done in the schema (`RESOURCE(lang, 'key')`), and the result is passed in as a model field.
+- Storage abstraction (from M5): `FUNC.storage` (`save`/`read`/`delete`), with the `STORAGE_DRIVER=local|s3` env switch.
+- **Bulma file-upload (`file has-name`) trap**: `class="file has-name"` ON ITS OWN displays NOTHING — for this, Bulma expects a `<span class="file-name">...</span>` element inside the `<label class="file-label">`, AND its own JS `onchange` handler that writes the selected file's name (`this.files[0].name`) into it (Bulma is pure CSS, it has no built-in JS behavior). Without this, after picking a file the user sees no feedback at all as to whether the browser actually accepted the file (a silent gap, not an error message — only noticeable visually). Working examples: `views/diplomas-admin/edit.html` (`#blank_file_name` span + `public/js/pages/diplomas-admin-edit/10_blank.js`'s `feEventId(input,'onchange',...)`), `views/submissions/new.html`/`public/js/pages/submissions-new/00_init.js` (static id, a single form/page), `views/submissions/detail.html`/`public/js/pages/submissions-detail/00_qsl.js` (class-based, delegated `feEventSelector` — because the QSL upload form repeats via `@{foreach}`, a static id would collide). **Practical consequence**: for every NEW `class="file has-name"` upload field, always add a `<span class="file-name">` element too, and wire up `onchange` — no element works "on its own".
+
+## A note on the language of the documentation
+
+This file, [README.md](README.md), [docs/USER_DOC.md](docs/USER_DOC.md) and the user manual under [docs/user-manual/](docs/user-manual/) are all in English, since this is meant to be an international project. The project also keeps a separate, day-by-day Hungarian development log (decisions, tests, session history) — it isn't part of this repository (it's an internal working document for the maintainer, not meant for the public release), so don't expect to find it here or reference it from code comments.

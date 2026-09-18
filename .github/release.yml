@@ -1,0 +1,28 @@
+# Configures the categories for GitHub's auto-generated release notes (see
+# .github/workflows/release.yml, "generate_release_notes: true") — pull
+# requests are grouped below based on their labels; anything with no
+# matching label falls into the last, catch-all category.
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - dependabot
+  categories:
+    - title: Breaking changes
+      labels:
+        - breaking-change
+    - title: New features
+      labels:
+        - enhancement
+        - feature
+    - title: Bug fixes
+      labels:
+        - bug
+        - fix
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Other changes
+      labels:
+        - '*'

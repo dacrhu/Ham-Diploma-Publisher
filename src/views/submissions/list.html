@@ -1,0 +1,32 @@
+<div class="box">
+	<h1 class="title is-4">@(#submissions.list.title)</h1>
+
+	@{if !repository.submissions.length}
+	<p class="has-text-grey">@(#submissions.list.empty)</p>
+	@{else}
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#submissions.list.col.diploma)</th>
+				<th>@(#submissions.list.col.status)</th>
+				<th class="has-text-right">@(#submissions.list.col.points)</th>
+				<th>@(#submissions.list.col.created)</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach s in repository.submissions}
+			<tr>
+				<td>@{s.diplomaInfo ? s.diplomaInfo.name : '—'}</td>
+				<td><span class="tag @{s.statusClass}">@{s.statusLabel}</span></td>
+				<td class="has-text-right">@{s.totalPoints}</td>
+				<td>@{new Date(s.created).toLocaleDateString(controller.language)}</td>
+				<td><a href="/submissions/@{s._id}" class="button is-small is-link is-light">@(#diplomas.public.list.details)</a></td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{fi}
+</div>

@@ -1,0 +1,57 @@
+<div class="box">
+	<h1 class="title is-4">@(#users.admin.title)</h1>
+
+	<div class="field is-grouped is-grouped-multiline">
+		<div class="control has-icons-left is-expanded">
+			<input class="input" type="text" id="input_search" placeholder="@(#users.admin.search.placeholder)">
+			<span class="icon is-small is-left"><i class="fas fa-search"></i></span>
+		</div>
+		<div class="control">
+			<div class="select">
+				<select id="select_status_filter">
+					<option value="">@(#users.admin.filter.status.all)</option>
+					<option value="active">@(#users.admin.status.active)</option>
+					<option value="disabled">@(#users.admin.status.disabled)</option>
+					<option value="pending_verification">@(#users.admin.status.pending_verification)</option>
+				</select>
+			</div>
+		</div>
+	</div>
+
+	<div class="table-container"
+		data-disable-confirm='@(#users.admin.disable.confirm)'
+		data-enable-confirm='@(#users.admin.enable.confirm)'
+		data-status-active='@(#users.admin.status.active)'
+		data-status-disabled='@(#users.admin.status.disabled)'
+		data-status-pending_verification='@(#users.admin.status.pending_verification)'
+		data-action-enable='@(#users.admin.action.enable)'
+		data-action-disable='@(#users.admin.action.disable)'
+		data-action-detail='@(#users.admin.action.detail)'>
+	<table class="table is-fullwidth is-hoverable">
+		<thead>
+			<tr>
+				<th>@(#users.admin.col.callsign)</th>
+				<th>@(#users.admin.col.name)</th>
+				<th>@(#users.admin.col.email)</th>
+				<th>@(#users.admin.col.country)</th>
+				<th>@(#users.admin.col.status)</th>
+				<th>@(#users.admin.col.manager)</th>
+				<th>@(#users.admin.col.created)</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody id="table_users"></tbody>
+	</table>
+	</div>
+
+	<p class="has-text-grey is-hidden" id="notice_empty">@(#users.admin.empty)</p>
+
+	<nav class="is-flex is-justify-content-space-between is-align-items-center mt-3 is-hidden" id="pagination_bar">
+		<button class="button is-small" id="button_prev_page">@(#users.admin.pagination.prev)</button>
+		<span class="is-size-7 has-text-grey" id="pagination_info" data-template='@(#users.admin.pagination.page)'></span>
+		<button class="button is-small" id="button_next_page">@(#users.admin.pagination.next)</button>
+	</nav>
+</div>
+
+@{import('frontendhelper.js + common.js')}
+@{import('pages/users-admin-list/00_init.js')}
