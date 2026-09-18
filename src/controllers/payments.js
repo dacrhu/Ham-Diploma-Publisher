@@ -1,17 +1,19 @@
-// payments.js — Stripe/PayPal webhookok + fizetés-visszatérési (return/cancel)
-// oldalak (10. lépés). Ezek a route-ok SZÁNDÉKOSAN nincsenek `+`-szal jelölve
-// (nem igényelnek bejelentkezést) — külső szolgáltatók (Stripe/PayPal szerverei)
-// hívják őket, nincs Total.js session-cookie-juk. A tényleges fizetés-INDÍTÁS
-// (Checkout Session / Order létrehozása) a bejelentkezett usertől függ, ezért
-// AZ a schemas/submissions/submissions.js `pay` actionjében van, nem itt.
+// payments.js — Stripe/PayPal webhooks + payment return/cancel pages
+// (step 10). These routes are INTENTIONALLY not marked with `+`
+// (they don't require login) — external providers (Stripe/PayPal servers)
+// call them, they have no Total.js session cookie. Actually STARTING a
+// payment (creating a Checkout Session / Order) depends on the logged-in
+// user, so THAT lives in schemas/submissions/submissions.js's `pay` action,
+// not here.
 //
-// Helyi fejlesztői környezetben (docker, nincs publikus URL) a Stripe/PayPal
-// szerverei NEM tudják elérni a webhook-routeokat — ezért a return-oldalak
-// (stripe_return/paypal_return) MAGUK IS szinkronban ellenőrzik/rögzítik a
-// fizetést (nem csak a webhookra várnak), hogy a fejlesztői/teszt-folyamat
-// webhook nélkül is végigmenjen. A webhook a "forrás igazság" éles környezetben
-// (megbízhatóbb, mert akkor is megérkezik, ha a felhasználó nem tér vissza az
-// oldalunkra) — mindkét út UGYANAHHOZ az idempotens markSubmissionPaid()-hoz fut be.
+// In the local dev environment (docker, no public URL) Stripe/PayPal's
+// servers CANNOT reach the webhook routes — so the return pages
+// (stripe_return/paypal_return) ALSO check/record the payment synchronously
+// themselves (not just waiting on the webhook), so the dev/test flow works
+// through without a webhook too. The webhook is the "source of truth" in
+// production (more reliable, because it arrives even if the user doesn't
+// return to our page) — both paths lead to the SAME idempotent
+// markSubmissionPaid().
 
 exports.install = function () {
     ROUTE('POST /webhooks/stripe', webhook_stripe, ['raw']);
@@ -34,9 +36,9 @@ async function logPaymentEvent(provider, submissionId, payload) {
     });
 }
 
-// Idempotens: ha a submission már 'paid'/'completed', nem csinál semmit (egy
-// webhook ÉS a return-oldal is elsülhet ugyanarra a fizetésre, vagy a
-// szolgáltató a webhookot többször is újraküldheti kézbesítési garanciából).
+// Idempotent: if the submission is already 'paid'/'completed', does nothing
+// (a webhook AND the return page can both fire for the same payment, or the
+// provider may resend the webhook multiple times as a delivery guarantee).
 async function markSubmissionPaid(submissionId, provider, providerRef, amount, currency) {
     let submission = await MDB.findOne(process.env.MONGODB_DB_NAME, 'submissions', { _id: MDB.ObjectID(submissionId) });
 
@@ -59,10 +61,10 @@ async function markSubmissionPaid(submissionId, provider, providerRef, amount, c
     return true;
 }
 
-// Szándékosan külön másolat a schemas/submissions/submissions.js
-// notifyPaymentConfirmed()-jéből — lásd a submissions.js fájl tetején lévő
-// indoklást a séma/controller réteg önállóságáról (nincs cross-require a két
-// réteg fájljai között ebben a kódbázisban).
+// Intentionally a separate copy of schemas/submissions/submissions.js's
+// notifyPaymentConfirmed() — see the reasoning at the top of the
+// submissions.js file about the schema/controller layer's independence
+// (there's no cross-require between the two layers' files in this codebase).
 async function notifyPaymentConfirmed(submission) {
     let user = await MDB.findOne(process.env.MONGODB_DB_NAME, 'users', { _id: MDB.ObjectID(submission.userId) }, {
         projection: { email: 1, firstName: 1, lastName: 1, language: 1 }
@@ -88,11 +90,11 @@ async function notifyPaymentConfirmed(submission) {
     });
 }
 
-// A `self.body` itt a NYERS (Buffer) törzs, mert a route ['raw'] flaggel van
-// regisztrálva (lásd exports.install) — a Stripe aláírás-ellenőrzéséhez
-// (`STRIPE.webhooks.constructEvent`) pontosan erre van szükség, egy
-// előzetesen JSON.parse()-olt/újra-serializált body ugyanis MÁS bájtsorozatot
-// adna, és az aláírás-ellenőrzés hamisan buknia.
+// Here `self.body` is the RAW (Buffer) body, because the route is registered
+// with the ['raw'] flag (see exports.install) — Stripe's signature
+// verification (`STRIPE.webhooks.constructEvent`) needs exactly this, since a
+// previously JSON.parse()'d/re-serialized body would produce a DIFFERENT byte
+// sequence, and the signature check would falsely fail.
 async function webhook_stripe() {
     let self = this;
 
@@ -124,9 +126,9 @@ async function webhook_stripe() {
     self.plain('ok');
 }
 
-// A PayPal a webhook-aláírást NEM helyben (HMAC), hanem egy visszahívással
-// ellenőrizteti (lásd modules/paypal-client.js) — ezért itt NEM kell ['raw']
-// flag, a normál JSON body-parse elég (a nyers bájtokra nincs szükségünk).
+// PayPal does NOT verify the webhook signature locally (HMAC), but via a
+// callback (see modules/paypal-client.js) — so here the ['raw'] flag is NOT
+// needed, the normal JSON body-parse is enough (we don't need the raw bytes).
 async function webhook_paypal() {
     let self = this;
 
@@ -170,10 +172,11 @@ async function webhook_paypal() {
     self.plain('ok');
 }
 
-// Stripe Checkout `success_url` célja — a `session_id` query paraméterrel a
-// Checkout Session tényleges státuszát szinkronban is lekérdezzük (ne csak a
-// webhookra várjunk, lásd a fájl tetején lévő indoklást). Utána MINDIG a
-// beadvány oldalára irányít vissza, függetlenül attól, hogy sikerült-e.
+// Target of the Stripe Checkout `success_url` — using the `session_id` query
+// parameter, we also query the Checkout Session's actual status
+// synchronously (so we don't just wait for the webhook, see the reasoning at
+// the top of the file). Afterwards it ALWAYS redirects back to the
+// submission's page, regardless of whether it succeeded.
 async function stripe_return(id) {
     let self = this;
 
@@ -192,10 +195,10 @@ async function stripe_return(id) {
     self.redirect(`/submissions/${id}`);
 }
 
-// PayPal Checkout `return_url` célja — a PayPal a jóváhagyott rendelés
-// azonosítóját a `token` query paraméterben adja vissza. Itt hívjuk meg
-// TÉNYLEGESEN a capture-t (a `pay` action csak LÉTREHOZTA a rendelést, a
-// jóváhagyás után a terhelést a return-oldalnak/webhooknak kell elvégeznie).
+// Target of the PayPal Checkout `return_url` — PayPal returns the approved
+// order's identifier in the `token` query parameter. Here we ACTUALLY call
+// the capture (the `pay` action only CREATED the order; after approval, the
+// charge has to be performed by the return page/webhook).
 async function paypal_return(id) {
     let self = this;
     let orderId = self.query.token;

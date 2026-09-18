@@ -1,67 +1,74 @@
-// Diplomas/Diplomas — diploma-definíciók admin (manager) kezelése: alapadatok,
-// szabályrendszer (checklist/pontozás), fizetés, PDF overlay-elrendezés. A biankó
-// kép feltöltése/kiszolgálása külön controller-routeokon megy (nem ezen a sémán
-// keresztül) — lásd controllers/diplomas-admin.js.
-// A 'mode' mező az ADIF MODE-ra illeszkedik (adásmód szerinti pontozás, pl. CW 3,
-// SSB 2, FM 1, Digi 1) — lásd modules/adif-modes.js a 'group' operátor hátteréhez.
-// A 'band' mező az ADIF BAND-ra illeszkedik (sávonkénti pontozás, pl. 80m 3,
-// 40m 2, VAGY egy diploma csak bizonyos sávokon teljesíthető, pl. csak
-// 80m/40m) — lásd modules/adif-bands.js a 'group' operátor hátteréhez.
+// Diplomas/Diplomas — admin (manager) management of diploma definitions: base data,
+// rule set (checklist/points), payment, PDF overlay layout. Uploading/serving the
+// blank certificate image goes through separate controller routes (not through
+// this schema) — see controllers/diplomas-admin.js.
+// The 'mode' field matches the ADIF MODE (points per operating mode, e.g. CW 3,
+// SSB 2, FM 1, Digi 1) — see modules/adif-modes.js for the background of the 'group' operator.
+// The 'band' field matches the ADIF BAND (points per band, e.g. 80m 3,
+// 40m 2, OR a diploma can only be completed on certain bands, e.g. only
+// 80m/40m) — see modules/adif-bands.js for the background of the 'group' operator.
 const RULE_FIELDS = ['call', 'comment', 'qth', 'mode', 'band'];
-// A 'regex' egyelőre csak a 'call' mezőnél elérhető (admin UI-n) — arra az esetre,
-// amikor a wildcard (*/?) nem elég precíz, pl. osztrák "csak kétbetűs suffix"
-// diploma: ^OE\d[A-Z]{2}$ (a wildcard "OE7??" is működne erre, de a regex pl. a
-// betű/szám megkülönböztetésére is képes, amire a "?" nem).
-// A 'group' a 'mode' és a 'band' mezőknél értelmezett — értéke egy
-// ADIF_MODES.GROUP_NAMES (pl. "DIGITAL") vagy ADIF_BANDS.GROUP_NAMES (pl. "VHF")
-// tagja, és bármelyik csoportba tartozó konkrét mód/sáv-értékre illeszkedik,
-// anélkül hogy a diplomának fel kellene sorolnia mindegyiket egyenként.
+// 'regex' is currently only available for the 'call' field (in the admin UI) — for
+// cases where a wildcard (*/?) isn't precise enough, e.g. an Austrian "two-letter
+// suffix only" diploma: ^OE\d[A-Z]{2}$ (the wildcard "OE7??" would also work for this,
+// but regex can also distinguish e.g. letter/digit, which "?" cannot).
+// 'group' is only interpreted for the 'mode' and 'band' fields — its value is a
+// member of ADIF_MODES.GROUP_NAMES (e.g. "DIGITAL") or ADIF_BANDS.GROUP_NAMES (e.g. "VHF"),
+// and matches any concrete mode/band value belonging to that group,
+// without the diploma having to list each one individually.
 const RULE_OPERATORS = ['wildcard', 'regex', 'contains', 'equals', 'in_list', 'group'];
 const RULE_MODES = ['checklist', 'points'];
-// Duplikátum-kezelés (elsősorban pontozás módban számít — ugyanazzal az
-// állomással több QSO is lehet a naplóban): 'allowed' = mindegyik számít (pl.
-// tiszta aktivitás-diploma, ismételt hívás is pontot ér), 'per_band_mode' =
-// ugyanaz az állomás sávonként/üzemmódonként csak egyszer számít (a leggyakoribb
-// ham rádiós konvenció — más sávon/módon újra számít), 'once' = ugyanaz az
-// állomás összesen csak egyszer számít, sávtól/módtól függetlenül. A tényleges
-// alkalmazás a 6. lépés rule-engine-jében történik majd (ADIF QSO-k tényleges
-// deduplikálása) — itt egyelőre csak a diploma-szintű beállítás készül el.
+// Duplicate handling (mainly matters in points mode — the log can contain multiple
+// QSOs with the same station): 'allowed' = every one counts (e.g. a
+// pure activity diploma, where a repeated contact is also worth points), 'per_band_mode' =
+// the same station only counts once per band/mode (the most common
+// ham radio convention — it counts again on a different band/mode), 'once' = the same
+// station counts only once in total, regardless of band/mode. The actual
+// application happens later, in step 6's rule engine (actual deduplication of
+// ADIF QSOs) — for now, only the diploma-level setting is being built here.
 const DUPLICATE_POLICIES = ['allowed', 'per_band_mode', 'once'];
 const STATUSES = ['draft', 'active', 'archived'];
 const PAYMENT_METHODS = ['stripe', 'paypal', 'bank_transfer'];
 const OVERLAY_KEYS = ['callsign', 'applicantName', 'serialNumber', 'diplomaName', 'issueDate', 'points', 'categoryLabel', 'tierLabel', 'zoneLabel'];
 const DEFAULT_SERIAL_START = 1;
 
-// Fokozatok (pl. Bronz/Ezüst/Arany), csak pontozás módban értelmezett. Egy diploma
-// mindig `categories` tömböt tárol: ha a manager nem kapcsolja be az adásmód
-// szerinti bontást (categoriesEnabled=false), a tömb pontosan 1 elemű, implicit
-// "Mixed" kategória (modeFilter=null), amin belül a fokozat-létra fut. Ha be van
-// kapcsolva, több kategória is felvehető (pl. CW / Phone / Mixed), mindegyiknek
-// SAJÁT fokozat-létrája van (pl. CW-ben nehezebb elérni ugyanazt a pontot, mint
-// Phone-ban) — a beadás egyszerre több kategóriában is teljesíthet (pl. 40 CW +
-// 40 SSB, mindkettő eléri a minimumot -> mindkét kategóriára jár oklevél). A
-// tényleges kiértékelés (melyik kategória/fokozat teljesült) a 6. lépés
-// rule-engine-jében történik majd — itt egyelőre csak a diploma-szintű beállítás
-// készül el.
+// Tiers (e.g. Bronze/Silver/Gold), only interpreted in points mode. A diploma
+// always stores a `categories` array: if the manager doesn't enable the
+// per-mode breakdown (categoriesEnabled=false), the array has exactly 1 element, the implicit
+// "Mixed" category (modeFilter=null), within which the tier ladder runs. If it is
+// enabled, multiple categories can be added (e.g. CW / Phone / Mixed), each with its
+// OWN tier ladder (e.g. it's harder to reach the same score in CW than in
+// Phone) — a submission can qualify in multiple categories at once (e.g. 40 CW +
+// 40 SSB, both reach the minimum -> a certificate is issued for both categories). The
+// actual evaluation (which category/tier was achieved) happens later, in step 6's
+// rule engine — for now, only the diploma-level setting is being
+// built here.
 const CATEGORY_MODE_FILTERS = ADIF_MODES.GROUP_NAMES;
 
-// Diploma-típus: 'standard' (napló feltöltése -> checklist/pontozás rule-engine,
-// lásd fent) vagy 'challenge' (jelentkezés -> köröket sorsol a rendszer egy
-// előre felvett célpont-poolból, minden kör mindegyik sorsolt célpontjával QSO
-// kell -> következő kör). MEGLÉVŐ diplomáknál a `type` mező hiányzik a Mongóban
-// (a mező bevezetése előtt jöttek létre) -- mindenhol `diploma.type || 'standard'`
-// olvasandó, sose feltételezve, hogy a mező létezik.
-// FONTOS HATÓKÖR: itt KIZÁRÓLAG a challenge diploma admin-oldali
-// KONFIGURÁCIÓJA készül el (ez az objektum + a lenti sanitizeChallenge/validáció).
-// A tényleges jelentkezés/sorsolás/körönkénti log-feltöltés/QSL/elbírálás/PDF
-// egy KÉSŐBBI lépés.
+// Diploma type: 'standard' (log upload -> checklist/points rule engine,
+// see above) or 'challenge' (application -> the system draws rounds from a
+// pre-populated target pool, each round requires a QSO with each drawn target
+// -> next round). For EXISTING diplomas, the `type` field is missing in Mongo
+// (they were created before this field was introduced) -- everywhere it must be
+// read as `diploma.type || 'standard'`, never assuming the field exists.
+// IMPORTANT SCOPE: this only builds the admin-side CONFIGURATION of the
+// challenge diploma (this object + the sanitizeChallenge/validation below).
+// The actual application/drawing/per-round log upload/QSL/review/PDF is
+// a LATER step.
 const DIPLOMA_TYPES = ['standard', 'challenge'];
 
-// Melyik ADIF-mezőre illesztünk egy sorsolt célpontot: 'call' = konkrét hívójel,
-// 'comment' = szabad azonosító a napló COMMENT mezőjéből (ide írja az operátor
-// pl. az átjátszó/DMR talkgroup nevét -- nincs rá saját ADIF mező), 'country' =
-// DXCC-ország (a tényleges hívójel-prefix -> ország egyeztetés egy KÉSŐBBI lépés
-// modules/dxcc-prefixes.js-e, itt most csak választható configérték).
+// Which ADIF field a drawn target is matched against: 'call' = an exact callsign
+// (exact match), 'comment' = a free-form identifier from the log's COMMENT field (this is
+// where the operator writes e.g. the repeater/DMR talkgroup name -- there's no dedicated ADIF
+// field for it, PARTIAL/contains match), 'country' = callsign PREFIX match (e.g.
+// "HA" or "OE" -- a simple "which country was worked" check without a
+// full DXCC database, see modules/challenge-engine.js's isMatch(); the
+// more precise, actual DXCC entity resolution remains a LATER step not
+// built here). `challenge.commentFilterRegex` (see sanitizeChallenge)
+// is an INDEPENDENT, STANDALONE, GLOBAL condition -- alongside any targetField,
+// combined with AND, it ADDITIVELY restricts which QSOs are eligible
+// (e.g. targetField:'country' for the callsign prefix, while commentFilterRegex
+// SIMULTANEOUSLY requires a DMR talkgroup number of a given format).
 const CHALLENGE_TARGET_FIELDS = ['call', 'comment', 'country'];
 
 NEWSCHEMA('Diplomas/Diplomas', function (schema) {
@@ -72,8 +79,8 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
         action: async function ($) {
             let query = {};
 
-            // Plain (nem sa) manager csak a HOZZÁ rendelt diplomákat láthatja — a
-            // superadmin lát mindent (lásd get/save/delete ugyanezen szabályát).
+            // A plain (non-sa) manager can only see the diplomas assigned TO THEM — the
+            // superadmin sees everything (see the same rule in get/save/delete).
             if (!$.user.sa)
                 query.managerId = $.user._id;
 
@@ -124,14 +131,14 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
         }
     });
 
-    // Elrendezés-előnézet demo adatokkal: az Elrendezés fülön AKTUÁLISAN
-    // beállított (esetleg még el sem mentett) overlayFields-et rendereli rá a
-    // biankó képre valódi (nem CSS-, hanem ténylegesen legenerált) JPEG-ként,
-    // hogy a manager lássa, hogyan fog kinézni a végleges oklevél — anélkül,
-    // hogy valódi beadványra kellene várnia. Nincs vízjel (a demo-adatok
-    // önmagukban egyértelművé teszik, hogy ez nem egy valódi kiadott oklevél).
-    // Kép-bináris a válasz, NEM JSON — ezért `$.controller.binary(...)`-t hívunk
-    // `$.callback(...)` helyett a sikeres ágon.
+    // Layout preview with demo data: renders the CURRENTLY set (possibly not yet
+    // saved) overlayFields from the Layout tab onto the blank image as a real
+    // (not CSS-based, but actually generated) JPEG, so the manager can see how
+    // the final certificate will look — without having to wait for a real
+    // submission. No watermark (the demo data alone makes it clear that this
+    // isn't a real, issued certificate).
+    // The response is an image binary, NOT JSON — hence we call `$.controller.binary(...)`
+    // instead of `$.callback(...)` on the success branch.
     schema.action('previewRender', {
         permissions: ['manager'],
         language: true,
@@ -149,9 +156,9 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
             }
 
             let overlayFields = sanitizeOverlayFields($.model && $.model.overlayFields);
-            // A font/méret is az AKTUÁLIS (élő szerkesztőben kiválasztott, akár még
-            // el nem mentett) értéket használja, ugyanúgy, mint az overlayFields —
-            // így az előnézet tényleg azt mutatja, amit a manager épp beállított.
+            // The font/size also uses the CURRENT (selected in the live editor, possibly
+            // not yet saved) value, just like overlayFields —
+            // this way the preview really shows what the manager just set.
             let overlayFontFamily = CERT_RENDERER.FONT_FAMILIES[$.model && $.model.overlayFontFamily] ? $.model.overlayFontFamily : CERT_RENDERER.DEFAULT_FONT_FAMILY;
             let overlayFontSize = $.model && Number($.model.overlayFontSize) > 0 ? Number($.model.overlayFontSize) : CERT_RENDERER.DEFAULT_FONT_SIZE;
 
@@ -177,11 +184,11 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
         }
     });
 
-    // Csak akkor biztonságos, amíg diplomához nincs kötve beadvány (submissions,
-    // 6. lépéstől) — utána majd meg kell gondolni, hogy engedjük-e még (vagy csak
-    // archiválás legyen az egyetlen út). Egyelőre kifejezetten hasznos, hogy egy
-    // manager (vagy én, teszteléskor) törölni tudjon egy felesleges/teszt diplomát
-    // anélkül, hogy egy valódi rekordot kellene erre a célra felülírni.
+    // Only safe as long as no submission is tied to the diploma (submissions,
+    // from step 6 on) — afterwards it will need reconsidering whether to still allow it (or
+    // make archiving the only path). For now it's specifically useful for a
+    // manager (or me, during testing) to be able to delete an unnecessary/test diploma
+    // without having to overwrite a real record for that purpose.
     schema.action('delete', {
         permissions: ['manager'],
         input: '*id:string',
@@ -197,9 +204,9 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
             if (diploma && diploma.blankImage && diploma.blankImage.key) {
                 await STORAGE.delete(diploma.blankImage.key);
 
-                // A vízjelezett verzió (lásd controllers/diplomas-admin.js
-                // upload_blank) külön storage-kulcs alatt van — enélkül itt
-                // árván maradna a törölt diploma mappájában.
+                // The watermarked version (see controllers/diplomas-admin.js
+                // upload_blank) is under a separate storage key — without this it would be
+                // left orphaned here in the deleted diploma's folder.
                 if (diploma.blankImage.watermarkedKey) {
                     await STORAGE.delete(diploma.blankImage.watermarkedKey);
                 }
@@ -219,10 +226,10 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
             let model = $.model || {};
             let isUpdate = !!model.id;
 
-            // Új diploma létrehozása superadmin-only — egy plain manager csak a
-            // HOZZÁ már rendelt diplomákat szerkesztheti, újat nem hozhat létre
-            // (lásd controllers/diplomas-admin.js view_edit ugyanezen korlátozását
-            // a 'new' szerkesztő oldalon).
+            // Creating a new diploma is superadmin-only — a plain manager can only
+            // edit diplomas already assigned TO THEM, they cannot create a new one
+            // (see controllers/diplomas-admin.js view_edit's same restriction
+            // on the 'new' editor page).
             if (!isUpdate && !$.user.sa) {
                 $.callback({ success: false, message: RESOURCE($.language, 'error.diploma.create.forbidden') });
                 return;
@@ -267,23 +274,6 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
                 return;
             }
 
-            // Automatikus elfogadás (felhasználói kérésre): ha a rule-engine
-            // automatikusan elfogad egy beadványt, a manager-review-t átugorva
-            // AZONNAL kiadjuk az oklevelet (lásd controllers/submissions.js
-            // upload_submission + schemas/submissions/submissions.js
-            // approveSubmission). Ez ÖSSZEEGYEZTETHETETLEN a QSL-
-            // mintavételezéssel (ahhoz a beadónak fel kellene töltenie egy
-            // igazolást, mielőtt bármi kiadásra kerülne — az "azonnal"
-            // ígéretét törné) és a fizikai kézbesítéssel (annak manager-i
-            // egyeztetést/kifizetést igényel, nem "azonnal" jár) — ezért ezt
-            // itt, mentéskor kikényszerítjük, nem csak a felületen tiltjuk.
-            let autoApprove = !!model.autoApprove;
-
-            if (autoApprove && (Math.max(0, Number(model.qslSampleCount) || 0) > 0 || !!model.physicalOfferEnabled)) {
-                $.callback({ success: false, message: RESOURCE($.language, 'error.diploma.autoapprove.conflict') });
-                return;
-            }
-
             let type = DIPLOMA_TYPES.indexOf(model.type) !== -1 ? model.type : 'standard';
             let challenge = type === 'challenge' ? sanitizeChallenge(model.challenge) : {};
 
@@ -298,24 +288,58 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
                     return;
                 }
 
-                // Ismétlés nélkül a poolnak legalább annyi elemet kell tartalmaznia,
-                // ahányszor a teljes kihívás alatt sorsolásra kerül (körök száma *
-                // körönkénti sorsolás) -- különben egy körben a rendszer elfogyna a
-                // sorsolható (még nem húzott) elemekből.
+                // Without repetition, the pool must contain at least as many elements
+                // as will be drawn during the whole challenge (number of rounds *
+                // draws per round) -- otherwise the system would run out of
+                // drawable (not yet drawn) elements in some round.
                 if (!challenge.allowRepeatAcrossRounds && challenge.targetPool.length < challenge.drawPerRound * challenge.totalRounds) {
                     $.callback({ success: false, message: RESOURCE($.language, 'error.diploma.challenge.pool_too_small') });
                     return;
                 }
+
+                // commentFilterRegex is a STANDALONE, GLOBAL condition (per user
+                // request, 2026-09-18) -- INDEPENDENT of the targetField/pool choice,
+                // see modules/challenge-engine.js's passesFilters().
+                if (challenge.commentFilterRegex && !isValidRegexString(challenge.commentFilterRegex)) {
+                    $.callback({ success: false, message: RESOURCE($.language, 'error.diploma.challenge.comment_regex') });
+                    return;
+                }
             }
 
-            // Felelős manager (opcionális) — csak a MÁR 'manager' jogosultsággal (vagy
-            // sa-val) rendelkező felhasználók közül választható, lásd a diploma-listán
-            // és (a publikus felület elkészültekor, 5. lépés) a nyilvános oldalon is
-            // megjelenő "kit kell keresni ezzel a diplomával kapcsolatban" infó.
-            // A hozzárendelés kiosztása/átvétele szándékosan SA-ONLY — egy plain
-            // manager nem veheti el/adhatja át a saját (vagy más) diplomáját, ezért
-            // az ő esetében a mentés figyelmen kívül hagyja a beküldött managerId-t,
-            // és megtartja a diploma jelenlegi hozzárendelését.
+            // Auto-approve (per user request, AVAILABLE for both
+            // diploma types): if the submission automatically meets the
+            // conditions (standard: rule engine, challenge: all rounds
+            // completed, see modules/challenge-engine.js), the manager review is
+            // skipped and the certificate is issued IMMEDIATELY (see
+            // controllers/submissions.js upload_submission/
+            // finalizeChallengeRound + schemas/submissions/submissions.js
+            // approveSubmission). This is INCOMPATIBLE with QSL
+            // sampling (that would require the applicant to upload a
+            // confirmation before anything is issued — breaking the "immediately"
+            // promise) and with physical delivery (that requires manager
+            // coordination/payment, it doesn't happen "immediately") — so this is
+            // enforced here, on save, not just disabled in the UI. The
+            // QSL sampling FIELD differs by type (standard:
+            // model.qslSampleCount, challenge: challenge.qslSampleCount, from
+            // the already computed/sanitized object above) — so this
+            // validation could only go HERE, AFTER the type/challenge
+            // computation.
+            let autoApprove = !!model.autoApprove;
+            let effectiveQslSampleCount = type === 'challenge' ? challenge.qslSampleCount : Math.max(0, Number(model.qslSampleCount) || 0);
+
+            if (autoApprove && (effectiveQslSampleCount > 0 || !!model.physicalOfferEnabled)) {
+                $.callback({ success: false, message: RESOURCE($.language, 'error.diploma.autoapprove.conflict') });
+                return;
+            }
+
+            // Responsible manager (optional) — can only be chosen from users who ALREADY
+            // have the 'manager' permission (or are sa), see the "who to contact
+            // about this diploma" info that appears on the diploma list
+            // and (once the public interface is built, step 5) on the public page too.
+            // Assigning/reassigning this is intentionally SA-ONLY — a plain
+            // manager cannot take away/hand over their own (or someone else's) diploma, so
+            // for them, save ignores the submitted managerId,
+            // and keeps the diploma's current assignment.
             let managerId = $.user.sa ? (model.managerId || '').trim() : ((existingDiploma && existingDiploma.managerId) || '');
 
             if (managerId && !/^[0-9a-f]{24}$/i.test(managerId)) {
@@ -334,18 +358,18 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
 
             let matchRules = sanitizeMatchRules(model.matchRules);
             let overlayFields = sanitizeOverlayFields(model.overlayFields);
-            // Felhasználói kérésre a betűméret NEM mezőnkénti, hanem egységes az
-            // egész oklevélen (lásd modules/certificate-renderer.js kommentjét) — a
-            // font is egy zárt, ténylegesen telepített betűtípus-listából
-            // választható, nem szabad szöveg.
+            // Per user request, the font size is NOT per-field but uniform across
+            // the whole certificate (see the comment in modules/certificate-renderer.js) — the
+            // font can also only be chosen from a closed list of actually installed
+            // font families, not free text.
             let overlayFontFamily = CERT_RENDERER.FONT_FAMILIES[model.overlayFontFamily] ? model.overlayFontFamily : CERT_RENDERER.DEFAULT_FONT_FAMILY;
             let overlayFontSize = Number(model.overlayFontSize) > 0 ? Math.min(200, Math.max(6, Number(model.overlayFontSize))) : CERT_RENDERER.DEFAULT_FONT_SIZE;
             let paymentMethods = Array.isArray(model.paymentMethods) ? model.paymentMethods.filter(m => PAYMENT_METHODS.indexOf(m) !== -1) : [];
             let status = STATUSES.indexOf(model.status) !== -1 ? model.status : 'draft';
             let duplicatePolicy = DUPLICATE_POLICIES.indexOf(model.duplicatePolicy) !== -1 ? model.duplicatePolicy : 'per_band_mode';
 
-            // Fokozatok csak pontozás módban értelmezettek (lásd a CATEGORY_MODE_FILTERS
-            // fölötti komment) — checklist módban mindig kikapcsolt állapotba kényszerítjük.
+            // Tiers are only interpreted in points mode (see the comment above
+            // CATEGORY_MODE_FILTERS) — in checklist mode we always force them to a disabled state.
             let tiersEnabled = model.ruleMode === 'points' && !!model.tiersEnabled;
             let categoriesEnabled = tiersEnabled && !!model.categoriesEnabled;
             let categories = sanitizeCategories(model.categories, tiersEnabled, categoriesEnabled);
@@ -358,26 +382,26 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
                 deadlineDate: model.deadlineType === 'deadline' && model.deadlineDate ? new Date(model.deadlineDate) : null,
                 ruleMode: model.ruleMode,
                 duplicatePolicy: duplicatePolicy,
-                // Engedélyezett sávok — diploma-szintű, globális ÉRVÉNYESSÉGI szűrő,
-                // FÜGGETLEN a matchRules 'band' mezőjétől: az utóbbi PONTOT ad egy
-                // sávra (vagy nem ad, ha nincs ilyen szabály), ez itt viszont azt
-                // dönti el, hogy egy QSO EGYÁLTALÁN beleszámítható-e a diplomába,
-                // pontozástól függetlenül — pl. egy HF verseny diplománál a manager
-                // megadja, hogy csak 80m/40m/20m érvényes, és egy 2m-es QSO a
-                // naplóban emiatt automatikusan érvénytelen, akkor is, ha egyébként
-                // teljesítené a checklist/pontozás szabályokat. Üres tömb = nincs
-                // sáv-korlátozás (minden sáv érvényes). A tényleges kiszűrés a 6.
-                // lépés rule-engine-jében történik majd, itt egyelőre csak a
-                // diploma-szintű beállítás készül el.
+                // Allowed bands — a diploma-level, global VALIDITY filter,
+                // INDEPENDENT of the matchRules 'band' field: the latter gives
+                // POINTS for a band (or none, if there's no such rule), whereas this here
+                // decides whether a QSO can be counted toward the diploma AT ALL,
+                // regardless of scoring — e.g. for an HF contest diploma the manager
+                // specifies that only 80m/40m/20m is valid, and a 2m QSO in the
+                // log is therefore automatically invalid, even if it would otherwise
+                // satisfy the checklist/points rules. Empty array = no
+                // band restriction (every band is valid). The actual filtering will
+                // happen later, in step 6's rule engine — for now, only the
+                // diploma-level setting is being built here.
                 allowedBands: sanitizeAllowedBands(model.allowedBands),
                 matchRules: matchRules,
-                // Átjátszó (repeater) használat diploma-szintű, globális szabálya —
-                // NEM matchRules-soronkénti (a mennyire additív pontozás nem fér össze
-                // jól egy "nem engedélyezett -> az egész QSO kizárva" logikával). Ha
-                // repeaterAllowed=false, egy átjátszón keresztül történt QSO egyáltalán
-                // nem számít bele a diplomába; ha true, a repeaterPoints (csak pontozás
-                // módban értelmezett) adja meg, hány pontot ér egy ilyen összeköttetés.
-                // A tényleges alkalmazás a 6. lépés rule-engine-jében történik majd.
+                // Repeater usage — a diploma-level, global rule —
+                // NOT per matchRules row (since additive scoring doesn't mix
+                // well with a "not allowed -> whole QSO excluded" logic). If
+                // repeaterAllowed=false, a QSO made through a repeater doesn't count
+                // toward the diploma at all; if true, repeaterPoints (only interpreted in points
+                // mode) gives how many points such a contact is worth.
+                // The actual application will happen later, in step 6's rule engine.
                 repeaterAllowed: model.repeaterAllowed !== false,
                 repeaterPoints: Math.max(0, Number(model.repeaterPoints) || 0),
                 tiersEnabled: tiersEnabled,
@@ -413,11 +437,11 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
             set.type = type;
             set.challenge = challenge;
 
-            // A STANDARD-only mezőket (rule-engine beállítások) 'challenge' típusnál
-            // az alapértelmezett/üres értékükre kényszerítjük -- ugyanaz a minta, mint
-            // ahogy a tiersEnabled is már ma is false-ra kényszerül checklist módban.
-            // Így egy korábban standard diplomából challenge-re váltott dokumentumon
-            // sem marad értelmezhetetlen/félrevezető rule-engine adat.
+            // For the 'challenge' type, we force the STANDARD-only fields (rule engine
+            // settings) to their default/empty value -- the same pattern as
+            // tiersEnabled already being forced to false in checklist mode today.
+            // This way, a document that was switched from standard to challenge
+            // doesn't retain any meaningless/misleading rule-engine data either.
             if (type === 'challenge') {
                 set.ruleMode = 'checklist';
                 set.matchRules = [];
@@ -430,7 +454,6 @@ NEWSCHEMA('Diplomas/Diplomas', function (schema) {
                 set.categories = [];
                 set.zoneThresholds = { home: null, eu: null, dx: null };
                 set.qslSampleCount = 0;
-                set.autoApprove = false;
             }
 
             if (model.id) {
@@ -469,11 +492,11 @@ function isDbError(result) {
     return Array.isArray(result) && result[0] != null && result[0].error != null;
 }
 
-// Superadmin mindent lát/kezelhet; plain manager csak a HOZZÁ rendelt
-// (managerId === user._id) diplomát — lásd query/get/previewRender/delete/save
-// actionök ugyanezen szabályát. `diploma` hiánya (nem létező/törölt rekord)
-// nem-sa esetén is elutasításnak számít, hogy ne lehessen a létezéséről sem
-// információt szerezni.
+// Superadmin sees/manages everything; a plain manager only the diploma assigned
+// TO THEM (managerId === user._id) — see the same rule in the query/get/previewRender/delete/save
+// actions. A missing `diploma` (non-existent/deleted record) also counts as a
+// rejection for non-sa, so that no information can be gained about its existence
+// either.
 function isDiplomaManagerOf(user, diploma) {
     if (!user)
         return false;
@@ -488,13 +511,13 @@ function numOrNull(value) {
     return value === '' || value == null ? null : Number(value);
 }
 
-// A diploma-szintű felelős manager (managerId) megjelenítéséhez feloldja a
-// hozzá tartozó user email/hívójel adatait, és `managerInfo` mezőként ráakasztja
-// minden diploma-objektumra a `diplomas` tömbben (helyben módosít). SZÁNDÉKOSAN
-// NEM denormalizált/tárolt mező a diploma dokumentumon — csak a `managerId`
-// (string, users._id) van elmentve —, hogy ne menjen szét a diploma és a user
-// adata, ha valaki utólag megváltoztatja a hívójelét/email-jét. A `query` és a
-// `get` action is ezen keresztül hívja (get esetén 1 elemű tömbbel).
+// To display the diploma-level responsible manager (managerId), resolves the
+// corresponding user's email/callsign data, and attaches it as a `managerInfo` field
+// to every diploma object in the `diplomas` array (modifies in place). INTENTIONALLY
+// NOT a denormalized/stored field on the diploma document — only `managerId`
+// (string, users._id) is saved — so that the diploma's and the user's data don't
+// drift apart if someone later changes their callsign/email. Both the `query` and the
+// `get` action call this (for get, with a 1-element array).
 async function attachManagerInfo(diplomas) {
     let ids = diplomas.map(d => d.managerId).filter(id => id);
 
@@ -519,8 +542,8 @@ async function attachManagerInfo(diplomas) {
     }
 }
 
-// Visszaadja az első érvénytelen regex mintát (stringként), vagy null-t, ha minden
-// 'regex' operátorú szabály mintája érvényes reguláris kifejezés.
+// Returns the first invalid regex pattern (as a string), or null if every
+// 'regex'-operator rule's pattern is a valid regular expression.
 function findInvalidRegexRule(rules) {
     if (!Array.isArray(rules))
         return null;
@@ -546,9 +569,22 @@ function findInvalidRegexRule(rules) {
     return null;
 }
 
-// Visszaadja az első érvénytelen csoportnevet egy adott mezőre (pl. 'mode' ->
-// ADIF_MODES.GROUP_NAMES, 'band' -> ADIF_BANDS.GROUP_NAMES), vagy null-t, ha
-// minden erre a mezőre vonatkozó 'group' operátorú szabály értéke létező csoport.
+// Whether a single string is a valid regex — needed for the challenge diploma's
+// standalone, global `commentFilterRegex` field (see sanitizeChallenge), which
+// will run as `new RegExp(pattern, 'i')` in modules/challenge-engine.js's
+// passesFilters(), against the uploaded log's COMMENT field.
+function isValidRegexString(pattern) {
+    try {
+        new RegExp(pattern, 'i');
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// Returns the first invalid group name for a given field (e.g. 'mode' ->
+// ADIF_MODES.GROUP_NAMES, 'band' -> ADIF_BANDS.GROUP_NAMES), or null if
+// every 'group'-operator rule for this field has a value that is an existing group.
 function findInvalidGroupRule(rules, field, groupNames) {
     if (!Array.isArray(rules))
         return null;
@@ -568,12 +604,12 @@ function findInvalidGroupRule(rules, field, groupNames) {
     return null;
 }
 
-// Diploma-szintű "engedélyezett sávok" lista tisztítása — lásd a `set.allowedBands`
-// fölötti kommentet a `save` action-ben a matchRules 'band' mezőjétől való
-// eltérésről. Kisbetűsítve (ADIF konvenció, mint a matchRules 'band' értékeinél),
-// duplikátum-szűréssel, névtelen/üres elem eldobva. NEM validáljuk szigorúan az
-// ADIF_BANDS.ALL listához — ugyanaz az elv, mint a matchRules 'band' mezőjénél:
-// a lista csak a gyakori sávokat tartalmazza, a manager szabadon megadhat mást is.
+// Sanitizes the diploma-level "allowed bands" list — see the comment above
+// `set.allowedBands` in the `save` action about how it differs from the matchRules
+// 'band' field. Lowercased (ADIF convention, like the matchRules 'band' values),
+// with duplicate filtering, unnamed/empty elements dropped. We do NOT strictly validate
+// against the ADIF_BANDS.ALL list — same principle as for the matchRules 'band' field:
+// the list only contains the common bands, the manager is free to enter something else too.
 function sanitizeAllowedBands(bands) {
     if (!Array.isArray(bands))
         return [];
@@ -594,11 +630,11 @@ function sanitizeAllowedBands(bands) {
     return output;
 }
 
-// Ugyanaz, mint a sanitizeAllowedBands, csak adásmódokra (nagybetűsítve, az ADIF
-// MODE konvenciónak megfelelően — lásd matchRules 'mode' mezőjét). Jelenleg a
-// challenge diploma-típus "engedélyezett adásmódok" szűrőjéhez kell (lásd
-// sanitizeChallenge) — standard típusnál ugyanezt a szerepet a matchRules 'mode'
-// mezője tölti be, ott nincs rá szükség külön.
+// Same as sanitizeAllowedBands, but for operating modes (uppercased, per the ADIF
+// MODE convention — see the matchRules 'mode' field). Currently needed for the
+// challenge diploma type's "allowed modes" filter (see sanitizeChallenge) —
+// for the standard type, the matchRules 'mode' field plays the same role, so it's
+// not needed separately there.
 function sanitizeAllowedModes(modes) {
     if (!Array.isArray(modes))
         return [];
@@ -638,16 +674,16 @@ function sanitizeMatchRules(rules) {
             value = String(value || '').trim();
         }
 
-        // Az adásmód-értékeket (konkrét mód VAGY csoportnév) egységesen nagybetűsen
-        // tároljuk, mert az ADIF MODE mező is így definiált, és a jövőbeli
-        // rule-engine (6. lépés) kis-nagybetű-független összehasonlítást spórol meg.
+        // We store mode values (concrete mode OR group name) uniformly uppercased,
+        // because the ADIF MODE field is also defined this way, and it saves the
+        // future rule engine (step 6) a case-insensitive comparison.
         if (rule.field === 'mode') {
             value = Array.isArray(value) ? value.map(v => v.toUpperCase()) : value.toUpperCase();
         }
 
-        // A sáv-értékeket (konkrét sáv, pl. "80M") egységesen kisbetűsen tároljuk
-        // ("80m") — az ADIF BAND mező is így definiált, a csoportnév (pl. "VHF")
-        // viszont nagybetűsen (ugyanaz a konvenció, mint a mode-csoportoknál).
+        // We store band values (concrete band, e.g. "80M") uniformly lowercased
+        // ("80m") — the ADIF BAND field is also defined this way, while the group name (e.g. "VHF")
+        // is uppercased (the same convention as for mode groups).
         if (rule.field === 'band') {
             if (rule.operator === 'group') {
                 value = String(value).toUpperCase();
@@ -671,28 +707,29 @@ function sanitizeMatchRules(rules) {
     return output;
 }
 
-// Ékezet nélküli, kötőjeles kulcsot állít elő egy szabad szövegű címkéből (pl.
-// "Ezüst" -> "ezust"), hogy a kategóriák/fokozatok stabil, gépi azonosítóval
-// rendelkezzenek (ezt fogja használni majd a 6. lépés rule-engine-je és a
-// submissions kollekció, hogy egy beadványt egy adott kategória+fokozat
-// kombinációhoz kössön).
+// Produces an accent-free, hyphenated key from a free-text label (e.g.
+// a label with accented letters has its accents stripped before slugifying),
+// so that categories/tiers have a stable, machine
+// identifier (this will be used by step 6's rule engine and the
+// submissions collection to tie a submission to a given category+tier
+// combination).
 function slugify(text) {
     return String(text || '').trim().toLowerCase()
         .normalize('NFD').replace(/[̀-ͯ]/g, '')
         .replace(/[^a-z0-9]+/g, '-').replace(/(^-+|-+$)/g, '') || 'item';
 }
 
-// Egy kategórián belüli fokozat-létrát (pl. Bronz/Ezüst/Arany) tisztít: névtelen
-// sorokat eldob, a pontszámot 0-nál nem engedi kisebbre. A `minPoints` NEM egy
-// szám, hanem `{home, eu, dx}` — a user rájött, hogy ha a diplománál körzet
-// szerint más a minimum (lásd diploma-szintű `zoneThresholds`), akkor egy adott
-// fokozat elérési küszöbe is más lehet körzetenként (pl. egy DX állomásnak
-// nehezebb ugyanannyi pontot összeszednie, mint egy hazainak). A végén a `home`
-// érték szerint növekvő sorrendbe rendezünk — feltételezve, hogy a manager
-// mindhárom körzetben KONZISZTENSEN növekvő sorrendben tölti ki a fokozatokat
-// (pl. Bronz.home < Ezüst.home < Arany.home, és ugyanígy EU-ban/DX-ben is) —,
-// hogy a rule-engine a `home` mező alapján egyszerűen a legmagasabb olyan
-// fokozatot választhassa majd, aminek minPoints[zóna] <= elért pontszám.
+// Sanitizes a tier ladder within a category (e.g. Bronze/Silver/Gold): drops
+// unnamed rows, doesn't allow the score below 0. `minPoints` is NOT a
+// number but `{home, eu, dx}` — the user realized that if a diploma has a
+// different minimum per zone (see the diploma-level `zoneThresholds`), then a given
+// tier's threshold can also differ per zone (e.g. it's harder for a DX
+// station to gather the same number of points as a home station). At the end we
+// sort in ascending order by the `home` value — assuming the manager
+// fills in the tiers in a CONSISTENTLY ascending order in all three zones
+// (e.g. Bronze.home < Silver.home < Gold.home, and likewise for EU/DX) —
+// so that the rule engine can later simply pick, based on the `home` field, the
+// highest tier whose minPoints[zone] <= the achieved score.
 function sanitizeTiers(tiers) {
     if (!Array.isArray(tiers))
         return [];
@@ -736,23 +773,23 @@ function sanitizeTiers(tiers) {
     return output;
 }
 
-// A kategória "neve" NEM szabad szöveg (ez korábban egy külön input volt, de a
-// felhasználó jelezte, hogy ez fölösleges és zavaró — nem világos, mi a
-// kapcsolat egy szabadon beírt névvel és az adásmód-szűrővel). Ehelyett a
-// kategória neve MINDIG az adásmód-szűrőből származik — a manager csak a
-// szűrőt választja ki, a megjelenő címke automatikusan követi azt.
+// The category's "name" is NOT free text (this used to be a separate input, but the
+// user pointed out that it's redundant and confusing — it's unclear what the
+// relationship is between a freely typed name and the mode filter). Instead the
+// category name ALWAYS comes from the mode filter — the manager only picks the
+// filter, the displayed label automatically follows it.
 const CATEGORY_LABELS = { CW: 'CW', PHONE: 'Phone', DIGITAL: 'Digital', IMAGE: 'Image' };
 function categoryLabelFor(modeFilter) {
     return modeFilter ? (CATEGORY_LABELS[modeFilter] || modeFilter) : 'Mixed';
 }
 
-// Ha a fokozatok nincsenek bekapcsolva, üres tömböt tárolunk. Ha be vannak
-// kapcsolva de az adásmód szerinti kategóriák nincsenek, a bemenetet 1 elemre
-// vágjuk (implicit "Mixed" kategória, modeFilter nélkül) — így a rule-engine
-// mindig egységesen `categories` tömbön iterálhat majd, függetlenül attól, hogy a
-// manager használt-e adásmód szerinti bontást. Egy adásmód-szűrő (pl. "CW")
-// csak egyszer szerepelhet — ismétlődő kategóriát (pl. két "CW" sor) eldobjuk,
-// mert a névnek úgyis egyeznie kellene, ami értelmetlen duplikátumot adna.
+// If tiers are not enabled, we store an empty array. If they are
+// enabled but per-mode categories are not, we trim the input to 1 element
+// (implicit "Mixed" category, without modeFilter) — this way the rule engine
+// can always uniformly iterate over the `categories` array, regardless of whether the
+// manager used a per-mode breakdown. A mode filter (e.g. "CW")
+// can only appear once — a repeated category (e.g. two "CW" rows) is dropped,
+// because the name would have to match anyway, which would produce a pointless duplicate.
 function sanitizeCategories(categories, tiersEnabled, categoriesEnabled) {
     if (!tiersEnabled || !Array.isArray(categories))
         return [];
@@ -796,10 +833,12 @@ function sanitizeCategories(categories, tiersEnabled, categoriesEnabled) {
     return output;
 }
 
-// Célpont-pool egy sorát tisztítja: `value` kötelező (targetField szerint
-// normalizálva -- hívójelnél nagybetűsítve, mint a matchRules 'mode' mezőjénél),
-// `label` opcionális szabad megjelenítő szöveg. Duplikált (normalizált) `value`
-// csak egyszer kerül be, üres sor eldobva.
+// Sanitizes one row of the target pool: `value` is required (normalized according
+// to targetField -- uppercased for callsign/callsign-prefix, like the
+// matchRules 'mode' field -- see modules/challenge-engine.js isMatch()'s
+// 'call'/'country' branch, both compare against the callsign in uppercase),
+// `label` is an optional free display text. A duplicate (normalized)
+// `value` is only included once, empty rows are dropped.
 function sanitizeChallengePool(pool, targetField) {
     if (!Array.isArray(pool))
         return [];
@@ -818,7 +857,7 @@ function sanitizeChallengePool(pool, targetField) {
         if (!value)
             continue;
 
-        if (targetField === 'call')
+        if (targetField === 'call' || targetField === 'country')
             value = value.toUpperCase();
 
         let dedupeKey = value.toUpperCase();
@@ -834,12 +873,12 @@ function sanitizeChallengePool(pool, targetField) {
     return output;
 }
 
-// A challenge-specifikus beállítások tisztítása -- csak 'challenge' típusú
-// diplománál hívjuk (lásd save action), 'standard' típusnál a diploma dokumentum
-// `challenge` mezője mindig üres `{}`, hogy ne maradjon rajta értelmezhetetlen
-// adat. FONTOS HATÓKÖR: ez itt csak az ADMIN KONFIGURÁCIÓ tisztítása -- a
-// tényleges sorsolás/kör-egyeztetés logikája egy KÉSŐBBI lépés (lásd a
-// CHALLENGE_TARGET_FIELDS fölötti kommentet).
+// Sanitizes the challenge-specific settings -- only called for a 'challenge'-type
+// diploma (see save action); for a 'standard' type, the diploma document's
+// `challenge` field is always empty `{}`, so it doesn't retain meaningless
+// data. IMPORTANT SCOPE: this only sanitizes the ADMIN CONFIGURATION -- the
+// actual drawing/round-matching logic is a LATER step (see the comment
+// above CHALLENGE_TARGET_FIELDS).
 function sanitizeChallenge(challenge) {
     challenge = challenge || {};
 
@@ -849,22 +888,34 @@ function sanitizeChallenge(challenge) {
     let allowRepeatAcrossRounds = !!challenge.allowRepeatAcrossRounds;
     let roundDeadlineDays = Number(challenge.roundDeadlineDays) > 0 ? Math.floor(Number(challenge.roundDeadlineDays)) : null;
     let qslSampleCount = Math.max(0, Number(challenge.qslSampleCount) || 0);
+    // STANDALONE, GLOBAL condition (per user request, 2026-09-18) — a single
+    // regex pattern, COMPLETELY INDEPENDENT from the targetField/pool-based
+    // target matching, that the log's COMMENT field must also satisfy (AND
+    // relation, see modules/challenge-engine.js's passesFilters()), before
+    // a QSO can be considered for any target at all. This is needed
+    // independently of the target pool's own value because e.g.
+    // targetField:'country' (callsign prefix, see sanitizeChallengePool) AND
+    // a DMR talkgroup number can be required SIMULTANEOUSLY: the pool lists the
+    // HA/OE callsign prefixes, while commentFilterRegex might be "TG[0-9]{3,4}"
+    // — a QSO only counts if BOTH are satisfied.
+    let commentFilterRegex = String(challenge.commentFilterRegex || '').trim();
 
     return {
         targetField: targetField,
         targetPool: sanitizeChallengePool(challenge.targetPool, targetField),
+        commentFilterRegex: commentFilterRegex,
         drawPerRound: drawPerRound,
         totalRounds: totalRounds,
         allowRepeatAcrossRounds: allowRepeatAcrossRounds,
         roundDeadlineDays: roundDeadlineDays,
         qslSampleCount: qslSampleCount,
-        // Engedélyezett sávok/adásmódok — ugyanaz az ÉRVÉNYESSÉGI szűrő elv, mint a
-        // standard diploma-szintű `allowedBands`-nál (lásd a `save` action fölötti
-        // kommentet): üres tömb = nincs korlátozás, egyébként egy körben csak az
-        // itt felsorolt sávon/adásmóddal teljesített QSO érvényes. Standard
-        // típusnál erre a matchRules 'mode'/'band' mezője (és a diploma-szintű
-        // allowedBands) szolgál, de a challenge típus NEM használja a matchRules-t,
-        // ezért itt, a challenge-objektumon belül kap saját szűrőt.
+        // Allowed bands/modes — the same VALIDITY filter principle as the
+        // standard diploma-level `allowedBands` (see the comment above the `save`
+        // action): empty array = no restriction, otherwise in a round only a
+        // QSO made on one of the bands/modes listed here is valid. For the standard
+        // type, the matchRules 'mode'/'band' field (and the diploma-level
+        // allowedBands) serve this purpose, but the challenge type does NOT use matchRules,
+        // so it gets its own filter here, inside the challenge object.
         allowedBands: sanitizeAllowedBands(challenge.allowedBands),
         allowedModes: sanitizeAllowedModes(challenge.allowedModes)
     };

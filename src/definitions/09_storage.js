@@ -1,12 +1,11 @@
-// A `STORAGE_DRIVER` env változó (local|s3) alapján választja ki az aktív
-// driver-t, és `global.STORAGE` néven teszi elérhetővé egységesen — mindkét
-// driver (modules/storage-local.js, modules/storage-s3.js) ugyanazt az API-t
-// valósítja meg (save/read/exists/delete/serve), a hívó kód nem tudja/nem is
-// kell tudnia, melyik van kiválasztva. Az S3-driver modulja MINDIG betöltődik
-// (a `modules/` mappa minden fájlja automatikusan fut), de az `S3Client`
-// példányosítása önmagában nem csinál hálózati hívást — helyi ("local")
-// fejlesztéskor teljesen ártalmatlan, ha épp nincsenek is valódi S3-kulcsok
-// beállítva.
+// Selects the active driver based on the `STORAGE_DRIVER` env var (local|s3),
+// and exposes it uniformly as `global.STORAGE` — both drivers
+// (modules/storage-local.js, modules/storage-s3.js) implement the same API
+// (save/read/exists/delete/serve), the calling code doesn't know/need to know
+// which one is selected. The S3 driver module is ALWAYS loaded (every file in
+// the `modules/` folder runs automatically), but instantiating the `S3Client`
+// by itself makes no network call — completely harmless during local
+// ("local") development even if no real S3 keys are configured.
 if (process.env.STORAGE_DRIVER !== 'local' && process.env.STORAGE_DRIVER !== 's3') {
     throw new Error(`Ismeretlen STORAGE_DRIVER: "${process.env.STORAGE_DRIVER}" — csak "local" vagy "s3" lehet.`);
 }

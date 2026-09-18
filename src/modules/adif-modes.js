@@ -1,23 +1,25 @@
-// adif-modes.js — ADIF Mode-értékek csoportosítása (CW/PHONE/DIGITAL/IMAGE).
+// adif-modes.js — grouping of ADIF Mode values (CW/PHONE/DIGITAL/IMAGE).
 //
-// Miért kell ez: egy diploma szabálynál gyakori igény, hogy adásmódra adjunk
-// pontot (pl. CW 3, SSB 2, FM 1, Digi 1) — de a "digi" kategóriában TÖBB TUCAT
-// konkrét ADIF Mode érték van (FT8, FT4, RTTY, PSK31, JS8, ...), és ezek folyamatosan
-// bővülnek. Ha egy diplománál minden digi-módra egyenként kellene pontot beállítani,
-// az kezelhetetlen — de ha csak egy "DIGITAL" csoportba sorolnánk mindent, akkor egy
-// KIFEJEZETTEN FT8-ra kiírt diploma tévesen elfogadna pl. RTTY összeköttetést is.
+// Why this is needed: a common requirement for a diploma rule is to award
+// points by mode (e.g. CW 3, SSB 2, FM 1, Digi 1) — but the "digi" category
+// has DOZENS of concrete ADIF Mode values (FT8, FT4, RTTY, PSK31, JS8, ...),
+// and these keep growing. If every digi mode had to be set up individually
+// for a diploma, that would be unmanageable — but if we just lumped
+// everything into a single "DIGITAL" group, then a diploma EXPLICITLY issued
+// for FT8 would incorrectly also accept e.g. an RTTY contact.
 //
-// Megoldás: a szabály (matchRules) 'mode' mezőjénél 3 operátor közül lehet
-// választani: 'equals' / 'in_list' (konkrét mód(ok), pl. csak "FT8"), vagy
-// 'group' (egy egész csoport, pl. "DIGITAL" — bármelyik tagja számít).
+// Solution: the rule's (matchRules) 'mode' field can choose from 3 operators:
+// 'equals' / 'in_list' (specific mode(s), e.g. only "FT8"), or 'group' (an
+// entire group, e.g. "DIGITAL" — any of its members count).
 //
-// FONTOS: ez a lista NEM teljes ADIF Mode enumeráció (az kb. 90 érték), csak a
-// leggyakoribb, ma is aktívan használt módokat tartalmazza. Ha egy manager olyan
-// módot szeretne használni, ami itt nincs, azt 'equals'/'in_list' operátorral
-// akkor is megadhatja szabadszavasan (a rendszer nem korlátozza validációval a
-// konkrét mód-értékeket, csak a 'group' nevét) — ez a lista elsősorban az admin
-// UI kényelmi autocomplete-jéhez és a 'group' csoportosításhoz kell. Időnként
-// érdemes bővíteni új, elterjedté váló digitális módokkal.
+// IMPORTANT: this list is NOT the complete ADIF Mode enumeration (that's
+// about 90 values), it only contains the most common modes still actively
+// used today. If a manager wants to use a mode that isn't here, they can
+// still enter it freely with the 'equals'/'in_list' operator (the system
+// doesn't restrict the concrete mode values via validation, only the
+// 'group' name) — this list is mainly needed for the admin UI's convenience
+// autocomplete and for the 'group' grouping. It's worth extending
+// occasionally with new digital modes as they become widespread.
 global.ADIF_MODES = {};
 
 ADIF_MODES.GROUPS = {
@@ -34,12 +36,12 @@ ADIF_MODES.GROUPS = {
 
 ADIF_MODES.GROUP_NAMES = Object.keys(ADIF_MODES.GROUPS);
 
-// Az összes ismert konkrét mód-érték egy lapos listában (admin UI autocomplete-hez).
+// All known concrete mode values in a flat list (for admin UI autocomplete).
 ADIF_MODES.ALL = [].concat.apply([], ADIF_MODES.GROUP_NAMES.map(g => ADIF_MODES.GROUPS[g]));
 
-// Melyik csoport(ok)ba tartozik egy adott mód-érték (a jövőbeli rule-engine-nek,
-// 6. lépés — egy mód akár több csoportba is tartozhatna, bár a jelen listában nem
-// fordul elő átfedés).
+// Which group(s) a given mode value belongs to (for the future rule engine,
+// step 6 — a mode could in principle belong to multiple groups, though no
+// overlap currently occurs in this list).
 ADIF_MODES.groupsOf = function (mode) {
     mode = (mode || '').toUpperCase();
     let result = [];

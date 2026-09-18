@@ -1,5 +1,5 @@
-// frontendhelper.js — egyedi, minimál frontend-esemény és form-segéd lib.
-// A technológiai mintaprojekt (EHS4) frontendhelper.js-éből átemelve.
+// frontendhelper.js — custom, minimal frontend-event and form-helper lib.
+// Carried over from the reference project's (EHS4) frontendhelper.js.
 
 function feEventId(e_id, e_event, e_func, e_dynamic = false) {
     if (e_id) {
@@ -54,8 +54,8 @@ function feFormReset(id) {
     }
 }
 
-// Jelszó-szabály — a backend párja: FUNC.passwordRules / FUNC.passwordValid
-// (src/definitions/08_password.js). Bármelyik módosításakor a másikat is frissítsd.
+// Password rules — the backend counterpart: FUNC.passwordRules / FUNC.passwordValid
+// (src/definitions/08_password.js). When modifying either one, update the other too.
 function fePasswordRules(password) {
     password = password || '';
     return {
@@ -72,8 +72,8 @@ function fePasswordValid(password) {
     return r.length && r.lower && r.upper && r.digit && r.special;
 }
 
-// Az inputEl 'input' eseményére frissíti a containerEl-ben lévő
-// <li data-rule="length|lower|upper|digit|special"> elemek állapotát.
+// Updates the state of the <li data-rule="length|lower|upper|digit|special">
+// elements inside containerEl on inputEl's 'input' event.
 function fePasswordChecklistBind(inputEl, containerEl) {
     if (!inputEl || !containerEl) {
         return;
@@ -132,7 +132,7 @@ function feFormToJSON(id) {
     return output;
 }
 
-// Listanézeteknél a többsoros mezőket egy sorba kell tömöríteni
+// In list views, multi-line fields need to be compressed onto a single line
 function feStripNewlines(text) {
     return (text || '').replace(/\s*\r?\n\s*/g, ' ').trim();
 }

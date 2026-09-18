@@ -4,17 +4,17 @@ exports.install = function () {
     ROUTE('GET /admin/settings', view_settings);
     ROUTE('+GET /api/admin/settings *Settings/Settings --> get');
     ROUTE('+POST /api/admin/settings *Settings/Settings --> save');
-    // Diploma-manager szerepkör kiosztása/visszavonása — lásd Users/Users
-    // query/setManager actionök (sa-only ellenőrzés az actionön belül, nem itt).
+    // Granting/revoking the diploma-manager role — see the Users/Users
+    // query/setManager actions (sa-only check happens inside the action, not here).
     ROUTE('+GET /api/admin/users *Users/Users --> query');
     ROUTE('+POST /api/admin/users/set-manager *Users/Users --> setManager');
-    // Főoldal-logó (oldalsáv teteje, MINDEN oldalon) + banner (csak a
-    // főoldalon, a logó korábbi helyén, felhasználói kérésre külön kép)
-    // feltöltése/kiszolgálása — ugyanaz a minta, mint a diploma biankó képnél
-    // (lásd controllers/diplomas-admin.js upload_blank/serve_blank), csak
-    // nincs vízjelezés és nincs id-paraméter (a `settings` szinguláris). A
-    // kiszolgálás szándékosan PUBLIKUS (nincs auth-ellenőrzés) — mindkettőt
-    // be nem jelentkezett látogató is látja.
+    // Home-page logo (top of sidebar, on EVERY page) + banner (only on the
+    // home page, at the logo's former spot, a separate image at the user's
+    // request) upload/serving — the same pattern as the diploma blank image
+    // (see controllers/diplomas-admin.js upload_blank/serve_blank), just
+    // without watermarking and without an id parameter (`settings` is
+    // singular). Serving is deliberately PUBLIC (no auth check) — a
+    // not-logged-in visitor sees both too.
     ROUTE('+POST /upload/site/logo', upload_logo, ['upload'], Number(process.env.UPLOAD_MAX_FILE_SIZE_IN_KB));
     ROUTE('GET /uploads/site/logo', serve_logo);
     ROUTE('+POST /upload/site/banner', upload_banner, ['upload'], Number(process.env.UPLOAD_MAX_FILE_SIZE_IN_KB));
@@ -36,11 +36,11 @@ function view_settings() {
     self.view('settings-admin');
 }
 
-// `field`: a `settings` dokumentum mezőneve ('siteLogo'/'siteBanner'), `slug`:
-// a storage-kulcs/fájlnév-előtag ('logo'/'banner') — a logó és a banner
-// feltöltése/tárolása/takarítása egyébként teljesen azonos logikát követ,
-// ezért ez a két apró route-függvény (upload_logo/upload_banner) csak erre a
-// közös segédre hivatkozik.
+// `field`: the field name of the `settings` document ('siteLogo'/'siteBanner'),
+// `slug`: the storage-key/filename prefix ('logo'/'banner') — uploading,
+// storing, and cleaning up the logo and the banner otherwise follow completely
+// identical logic, so these two tiny route functions (upload_logo/upload_banner)
+// just reference this shared helper.
 async function uploadSiteImage(self, field, slug) {
     if (!isManager(self)) {
         self.throw401();
@@ -62,8 +62,9 @@ async function uploadSiteImage(self, field, slug) {
     let settings = await SETTINGS.get();
     let previous = settings[field];
 
-    // Ha korábban más kiterjesztéssel volt kép (pl. .png helyett most .jpg), a
-    // régi fájlt töröljük, hogy ne maradjon árva, DB-hivatkozás nélküli kép.
+    // If there was previously an image with a different extension (e.g. .jpg
+    // now instead of .png), we delete the old file so no orphaned image
+    // without a DB reference remains.
     if (previous && previous.key && previous.key !== key) {
         await STORAGE.delete(previous.key);
     }

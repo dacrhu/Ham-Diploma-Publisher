@@ -1,5 +1,5 @@
-// Jelszó-szabály — a frontend párja: fePasswordRules / fePasswordValid
-// (src/public/js/frontendhelper.js). Bármelyik módosításakor a másikat is frissítsd.
+// Password rules — its frontend counterpart: fePasswordRules / fePasswordValid
+// (src/public/js/frontendhelper.js). When modifying either one, update the other too.
 FUNC.passwordRules = function (password) {
     password = password || '';
     return {

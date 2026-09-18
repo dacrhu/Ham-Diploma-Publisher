@@ -1,9 +1,9 @@
-// Fizetés (10. lépés) — a beadvány tulajdonosának fizetési-mód gombjai, és a
-// manager banki-utalás-jóváhagyás / teljesítés-jelölés gombjai. Önállóan
-// keresi ki a submissionId-t (nem támaszkodik a 00_init.js betöltési
-// sorrendjére, mert ez a fájl a "pending_review"-tól ELTÉRŐ, kölcsönösen
-// kizáró állapotokban (awaiting_payment/paid) töltődik be, lásd
-// views/submissions/detail.html import-feltételeit).
+// Payment (step 10) — the submission owner's payment-method buttons, and the
+// manager's bank-transfer-confirmation / mark-as-completed buttons. Looks up
+// the submissionId on its own (doesn't rely on 00_init.js's load order,
+// because this file is loaded in states MUTUALLY EXCLUSIVE from
+// "pending_review" (awaiting_payment/paid), see the import conditions in
+// views/submissions/detail.html).
 const paymentSubmissionId = document.getElementById('box_submission_detail').dataset.id;
 const notification_payment_error = document.getElementById('notification_payment_error');
 
@@ -45,9 +45,9 @@ feEventSelector('.pay-method', 'onclick', async function () {
 			return;
 		}
 
-		// bank_transfer: nincs átirányítás, a szerver már elmentette a
-		// fizetési szándékot — újratöltés után a "függőben" ág jelenik meg
-		// a banki adatokkal.
+		// bank_transfer: no redirect, the server has already saved the
+		// payment intent — after reloading, the "pending" branch is shown
+		// with the bank details.
 		window.location.reload();
 	} catch (err) {
 		showPaymentError('');

@@ -23,6 +23,11 @@ home.intro : Publishing and applying for amateur radio diplomas (awards) in one 
 
 contacts.title : Contacts
 contacts.empty : This page is currently empty — the manager can fill it in on the Settings page.
+privacy.title : Privacy policy
+menu.powered.by : Powered by Ham Diploma Publisher
+privacy.empty : This page is currently empty — the manager can fill it in on the Settings page.
+cookie.banner.text : This site uses cookies required for it to work (login, language preference). Details:
+cookie.banner.accept : Got it
 
 // --- Error messages ---
 error.password.invalid : The password does not meet the requirements (min. 12 characters, upper and lower case, digit, special character).
@@ -42,6 +47,7 @@ error.user.cannot_disable_sa : A superadmin account cannot be disabled.
 
 // --- Registration ---
 register.title : Register
+register.required.hint : required field
 register.email.label : Email address
 register.password.label : Password
 register.password.confirm.label : Confirm password
@@ -52,6 +58,7 @@ register.country.label : Country
 register.street.label : Street, house number
 register.city.label : City
 register.zip.label : ZIP code
+register.address.hint : The address is only required if you'd like to receive the diploma by post, printed — if you don't need that, you may leave it blank.
 register.submit : Register
 register.success.title : Registration successful
 register.success.text : We sent a confirmation email to the given address. Please click the link in it to activate your account.
@@ -240,9 +247,12 @@ diplomas.autoapprove.help : If the system automatically finds a submission eligi
 
 diplomas.challenge.notice : The application/draw/round-by-round log check process is still under development — for now only the settings can be configured here.
 diplomas.challenge.targetfield.label : Target field
-diplomas.challenge.targetfield.help : Which data the system draws each round from the list below, and which log field the radio amateur's contact must match.
+diplomas.challenge.targetfield.help : Which data the system draws each round from the list below, and which log field the radio amateur's contact must match. For "Country", enter a callsign prefix in the Value column (e.g. "HA", "OE") — the system checks whether the log's callsign starts with it.
+diplomas.challenge.commentfilter.label : Comment filter (regular expression, optional)
+diplomas.challenge.commentfilter.placeholder : e.g. TG[0-9]{3,4}
+diplomas.challenge.commentfilter.help : A standalone condition, INDEPENDENT of the "Target field"/target list above, that applies to EVERY QSO — when filled in, a QSO only counts toward the challenge if the log's COMMENT field ALSO matches this regular expression, IN ADDITION to matching the target (AND condition). Example: Target field "Country", list: "HA", "OE" (callsign prefixes), and this field set to "TG[0-9]{3,4}" — a QSO with callsign "HA1AA" and comment "TG123" is valid (the callsign starts with HA AND the comment matches the 3-4-digit TG pattern), while callsign "OE1BB" with comment "TG98" is NOT (the comment only has 2 digits, so it doesn't match the pattern), even though the callsign prefix alone would otherwise match. Leave empty for no such extra condition.
 diplomas.challenge.targetfield.call : Callsign
-diplomas.challenge.targetfield.country : Country
+diplomas.challenge.targetfield.country : Country (by callsign prefix)
 diplomas.challenge.targetfield.comment : Other identifier (log Comment field, e.g. repeater/talkgroup)
 diplomas.challenge.allowedbands.label : Allowed bands (comma-separated)
 diplomas.challenge.allowedbands.help : If filled in (e.g. "80m, 40m, 20m"), only a contact made on one of these bands is valid in a round — a QSO made on another band (e.g. 2m) is automatically invalid. Leave empty for no band restriction.
@@ -251,7 +261,7 @@ diplomas.challenge.allowedmodes.label : Allowed modes (comma-separated)
 diplomas.challenge.allowedmodes.help : If filled in (e.g. "FT8, DMR"), only a contact made using one of these modes is valid in a round — a QSO made using another mode is automatically invalid. Leave empty for no mode restriction.
 diplomas.challenge.allowedmodes.placeholder : e.g. FT8, DMR
 diplomas.challenge.pool.label : Target pool
-diplomas.challenge.pool.help : The system draws from these each round. "Label" is optional, for display only (e.g. country name, talkgroup name).
+diplomas.challenge.pool.help : The system draws from these each round. "Label" is optional, for display only (e.g. a country name). For the "Country" target field, enter a callsign prefix in Value (e.g. "HA") and the display name in Label (e.g. "Hungary").
 diplomas.challenge.pool.col.value : Value
 diplomas.challenge.pool.col.label : Label (optional)
 diplomas.challenge.pool.add : Add item
@@ -375,7 +385,8 @@ diplomas.public.detail.cta.login : You need to log in to apply.
 diplomas.public.detail.cta.login.button : Log in
 diplomas.public.detail.cta.register.text : Don't have an account yet?
 diplomas.public.detail.cta.register.button : Register
-diplomas.public.detail.cta.soon : Log submission will be available soon.
+diplomas.public.detail.cta.apply.intro : Applying starts the first round: the system will draw the targets you need to complete this round.
+diplomas.public.detail.cta.apply.button : Apply for the challenge
 diplomas.public.detail.cta.submit.button : Upload log / Submit
 diplomas.public.detail.cta.expired : The submission deadline has passed, logs can no longer be submitted for this diploma.
 diplomas.public.detail.cta.existing : You already have a submission for this diploma.
@@ -397,9 +408,15 @@ error.diploma.create.forbidden : Creating a new diploma requires superadmin perm
 error.diploma.challenge.target_field : Choose a target field on the Challenge tab (callsign / country / other identifier).
 error.diploma.challenge.pool_empty : Add at least one item to the target pool on the Challenge tab.
 error.diploma.challenge.pool_too_small : The target pool is too small for this many rounds/draws without repetition — enlarge the pool, reduce the rounds/items per round, or allow repetition.
+error.diploma.challenge.comment_regex : The value entered in the Comment filter field is not a valid regular expression
 
 // --- MFA admin settings ---
 settings.title : Settings
+settings.tab.general : General
+settings.tab.contact : Contact
+settings.tab.privacy : Privacy
+settings.tab.qsl : QSL types
+settings.tab.security : Security
 settings.appearance.section : Appearance
 settings.appearance.logo.label : Custom logo (top of the sidebar, every page)
 settings.appearance.logo.choose : Choose file…
@@ -415,6 +432,10 @@ settings.appearance.welcometext.label : Welcome text
 settings.appearance.welcometext.help : Each line is shown as a separate paragraph on the home page. If left empty, the default introductory text is shown.
 settings.contacts.label : Contacts page content
 settings.contacts.help : Freely editable content for the public "Contacts" page — HTML tags are allowed (e.g. &lt;p&gt;, &lt;a href="..."&gt;, &lt;strong&gt;), the system renders it as actual HTML, unchanged. Since any HTML can go here, only fill it in from a trusted (manager/sa) source.
+settings.privacy.label : Privacy policy page content
+settings.privacy.help : Freely editable content for the public "Privacy policy" page (HTML tags allowed, same as the Contacts page). Fill in who the data controller is and where the site is hosted. If needed, you can add other-language translations too — just append them below the English text in this same field.
+settings.qsl.label : Accepted QSL confirmation types
+settings.qsl.help : These are the types shown to applicants when uploading a QSL confirmation for a diploma application, to let them know which sources we accept.
 settings.mfa.section : Two-factor authentication (MFA)
 settings.mfa.user.label : Radio amateurs
 settings.mfa.manager.label : Managers
@@ -424,7 +445,6 @@ settings.mfa.policy.required : Required
 settings.mfa.methods.label : Allowed methods
 settings.submit : Save
 settings.saved : Settings saved.
-settings.managers.moved.hint : Assigning diploma managers and disabling users is now available under the "Users" menu item (/admin/users).
 // --- User admin (/admin/users, superadmin-only) ---
 users.admin.title : Users
 users.admin.search.placeholder : Search by callsign, name or email…
@@ -527,6 +547,7 @@ submissions.status.rejected : Rejected
 submissions.status.awaiting_payment : Awaiting payment
 submissions.status.paid : Paid
 submissions.status.completed : Completed
+submissions.status.challenge_in_progress : Challenge in progress
 
 error.submission.notfound : Submission not found.
 error.submission.forbidden : You don't have access to this submission.
@@ -536,11 +557,50 @@ error.submission.qsl.file.required : Please choose an image or PDF for the QSL c
 
 submissions.detail.qsl.title : QSL confirmation
 submissions.detail.qsl.intro : The system requires a QSL confirmation (screenshot or scan) for the following contacts — the submission will only go to review once you've uploaded one for each.
+submissions.detail.qsl.types.label : Accepted confirmation types:
+submissions.detail.qsl.types.hint : Upload a screenshot or scanned image that clearly shows the confirmation mark (e.g. QRZ's little star, Clublog's green "C", the confirmed QSO status for LoTW/eQSL/HRDLog/iQSL, or the paper card itself for a paper QSL).
+qsl.type.lotw : LoTW
+qsl.type.eqsl : eQSL
+qsl.type.qrz : QRZ
+qsl.type.clublog : Clublog
+qsl.type.hrdlog : HRDLog / iQSL
+qsl.type.email : Email QSL
+qsl.type.paper : Paper QSL
 submissions.detail.qsl.col.call : Callsign
 submissions.detail.qsl.col.image : Confirmation
 submissions.detail.qsl.uploaded : Uploaded — view
 submissions.detail.qsl.choose : Choose file
 submissions.detail.qsl.upload.button : Upload
+submissions.detail.challenge.round.label : Round
+submissions.detail.challenge.deadline.label : Current round deadline
+submissions.detail.challenge.deadline.missed : Round {0}'s deadline passed before you completed all its targets — the system rejected the challenge because of this, the same way a rejected diploma works in the normal review flow.
+submissions.detail.challenge.rounds.title : Rounds
+submissions.detail.challenge.round.col.number : Round
+submissions.detail.challenge.round.col.status : Status
+submissions.detail.challenge.round.col.deadline : Deadline
+submissions.detail.challenge.round.col.targets : Targets
+submissions.detail.challenge.round.status.awaiting_log : Waiting for log upload
+submissions.detail.challenge.round.status.awaiting_qsl : Waiting for QSL confirmation
+submissions.detail.challenge.round.status.completed : Completed
+submissions.detail.challenge.log.title : Upload a log for this round
+submissions.detail.challenge.log.progress : targets matched so far
+submissions.detail.challenge.log.result.title : Result of the last upload
+submissions.detail.challenge.log.result.col.call : Callsign
+submissions.detail.challenge.log.result.col.band : Band
+submissions.detail.challenge.log.result.col.mode : Mode
+submissions.detail.challenge.log.result.col.comment : Comment
+submissions.detail.challenge.log.result.col.result : Result
+submissions.detail.challenge.qso.matched : Completed: {0}
+submissions.detail.challenge.qso.reason.band : This band is not among the ones allowed for this challenge
+submissions.detail.challenge.qso.reason.mode : This mode is not among the ones allowed for this challenge
+submissions.detail.challenge.qso.reason.comment_filter : The comment does not match the required format
+submissions.detail.challenge.qso.reason.already_matched : This target was already completed by another contact — this one wasn't needed
+submissions.detail.challenge.qso.reason.no_target_match_call : The callsign doesn't match any of the drawn targets
+submissions.detail.challenge.qso.reason.no_target_match_comment : The comment doesn't match any of the drawn targets
+submissions.detail.challenge.qso.reason.no_target_match_country : The callsign doesn't start with any of the drawn country prefixes
+submissions.detail.challenge.log.choose : Choose log file
+submissions.detail.challenge.log.upload.button : Upload
+submissions.detail.challenge.qsl.title : QSL confirmation for this round
 
 // --- Manager review (step 8) ---
 menu.admin.review : Review
@@ -596,6 +656,9 @@ email.submission.review_needed.btn : View submission
 email.submission.qsl_needed.subject : QSL confirmation upload needed
 email.submission.qsl_needed.intro : Your log submitted for the "{0}" diploma needs a QSL confirmation (image or scan) for {1} QSO(s) before it can be reviewed.
 email.submission.qsl_needed.btn : Upload QSL
+email.submission.challenge_failed.subject : Challenge failed — deadline missed
+email.submission.challenge_failed.intro : We're sorry to inform you that round {0}'s deadline passed before you completed all its targets, so the system has rejected the challenge.
+email.submission.challenge_failed.btn : View submission
 
 error.payment.state : This submission is not currently in a state that allows this payment action.
 error.payment.method : Invalid or unavailable payment method for this diploma.

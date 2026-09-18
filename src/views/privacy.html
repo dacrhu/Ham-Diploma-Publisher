@@ -1,0 +1,13 @@
+@{layout('layout')}
+
+<div class="box">
+	<h1 class="title is-4">@(#privacy.title)</h1>
+
+	@{if repository.privacyPolicyHtml}
+	<div class="content">
+		@{!repository.privacyPolicyHtml}
+	</div>
+	@{else}
+	<p class="has-text-grey">@(#privacy.empty)</p>
+	@{fi}
+</div>

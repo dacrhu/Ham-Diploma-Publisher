@@ -1,10 +1,11 @@
-// Settings/Settings — a globális `settings` szinguláris dokumentum (_id: 'global')
-// admin felületi kezelése. Csak manager (vagy sa) érheti el. A tényleges olvasás
-// belső célra (pl. login action MFA-ellenőrzés) a modules/settings-store.js-en
-// (`SETTINGS.get()`) keresztül történik, permission-ellenőrzés nélkül.
+// Settings/Settings — admin UI management of the global `settings` singleton document
+// (_id: 'global'). Only accessible by manager (or sa). Actual reads for internal
+// purposes (e.g. login action's MFA check) go through modules/settings-store.js
+// (`SETTINGS.get()`), without a permission check.
 const MFA_POLICIES = ['disabled', 'optional', 'required'];
 const MFA_METHODS = ['email', 'totp'];
 const SUPPORTED_LANGUAGES = ['hu', 'en', 'de'];
+const QSL_TYPES = ['lotw', 'eqsl', 'qrz', 'clublog', 'hrdlog', 'email', 'paper'];
 
 NEWSCHEMA('Settings/Settings', function (schema) {
 
@@ -32,6 +33,7 @@ NEWSCHEMA('Settings/Settings', function (schema) {
             }
 
             let methods = Array.isArray(model.mfaMethodsAllowed) ? model.mfaMethodsAllowed.filter(m => MFA_METHODS.indexOf(m) !== -1) : [];
+            let qslTypes = Array.isArray(model.qslTypesAllowed) ? model.qslTypesAllowed.filter(t => QSL_TYPES.indexOf(t) !== -1) : [];
 
             let set = {
                 mfaPolicyUser: model.mfaPolicyUser,
@@ -40,6 +42,8 @@ NEWSCHEMA('Settings/Settings', function (schema) {
                 siteTitle: (model.siteTitle || '').trim(),
                 siteWelcomeText: (model.siteWelcomeText || '').trim(),
                 contactsHtml: (model.contactsHtml || '').trim(),
+                privacyPolicyHtml: (model.privacyPolicyHtml || '').trim(),
+                qslTypesAllowed: qslTypes,
                 defaultLanguage: model.defaultLanguage,
                 updated: new Date(),
                 updatedBy: $.user._id

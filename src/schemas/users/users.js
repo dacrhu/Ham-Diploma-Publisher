@@ -1,26 +1,27 @@
-// Users/Users — regisztráció, e-mail megerősítés, belépés/kilépés, jelszó-csere,
-// saját profil, MFA (email-kód / TOTP authenticator app).
+// Users/Users — registration, email confirmation, login/logout, password change,
+// own profile, MFA (email code / TOTP authenticator app).
 //
-// MFA folyamat (settings.mfaPolicyUser/mfaPolicyManager alapján, lásd
+// MFA flow (based on settings.mfaPolicyUser/mfaPolicyManager, see
 // modules/settings-store.js):
-//   - Ha a useren már be van kapcsolva az MFA: login után egy "verify" pending
-//     tokent kapunk vissza -> mfaVerify action zárja le, hozza létre a sessiont.
-//   - Ha a policy kötelező, de a useren még nincs bekapcsolva (akár mert most
-//     regisztrált, akár mert a manager utólag kapcsolta be a policyt): login
-//     után egy "setup" pending tokent kapunk -> mfaSetupSelect (módszerválasztás
-//     + kód/QR kiküldése) -> mfaSetupConfirm (kód ellenőrzése, ez perzisztálja a
-//     user.mfa mezőt ÉS létrehozza a sessiont is). Ugyanez a két action fut le
-//     regisztráció után az első belépéskor is — nincs külön "regisztrációkori"
-//     MFA-setup, mert az e-mail megerősítés amúgy is megelőzi az első belépést.
-// A pending tokenek a REDIS_DB_MFA adatbázisban élnek, TTL_MFA_PENDING ideig.
+//   - If MFA is already enabled on the user: after login we get back a "verify"
+//     pending token -> the mfaVerify action closes this out, creates the session.
+//   - If the policy is mandatory, but it's not yet enabled on the user (either
+//     because they just registered, or because the manager turned on the policy
+//     afterwards): after login we get a "setup" pending token -> mfaSetupSelect
+//     (method selection + sending the code/QR) -> mfaSetupConfirm (checking the
+//     code, this persists the user.mfa field AND also creates the session). The
+//     same two actions run on the first login after registration as well — there
+//     is no separate "at registration time" MFA setup, because email confirmation
+//     precedes the first login anyway.
+// The pending tokens live in the REDIS_DB_MFA database, for TTL_MFA_PENDING.
 NEWSCHEMA('Users/Users', function (schema) {
 
-    // Regisztráció előtti "captcha" — felhasználói kérésre, bot-ellenes
-    // ellenőrzésként rádióamatőr-tudást igénylő kérdés (adott frekvencia (kHz)
-    // melyik amatőrsávba esik, lásd modules/band-captcha.js). A helyes választ
-    // NEM a kliens kapja meg — egy egyszer használatos tokenhez kötve a
-    // REDIS_DB_CAPTCHA adatbázisban tároljuk, TTL_CAPTCHA ideig; a `register`
-    // action ellenőrzi és azonnal érvényteleníti (lásd ott).
+    // Pre-registration "captcha" — at the user's request, an anti-bot check that
+    // requires radio amateur knowledge (which amateur band a given frequency (kHz)
+    // falls into, see modules/band-captcha.js). The correct answer is NOT sent to
+    // the client — it is stored bound to a single-use token in the REDIS_DB_CAPTCHA
+    // database, for TTL_CAPTCHA; the `register` action verifies it and immediately
+    // invalidates it (see there).
     schema.action('captchaChallenge', {
         action: async function ($) {
             let question = BAND_CAPTCHA.generate();
@@ -39,10 +40,10 @@ NEWSCHEMA('Users/Users', function (schema) {
         action: async function ($) {
             let model = $.model;
 
-            // A captcha-token EGYSZER használatos — a lekérdezés UTÁN azonnal
-            // érvénytelenítjük (lásd a login/resetPassword kódban is használt
-            // `.expire(...,-1)` mintát), függetlenül attól, helyes volt-e a
-            // válasz, hogy ne lehessen ugyanazt a tokent újra próbálgatni.
+            // The captcha token is SINGLE-USE — we invalidate it immediately
+            // AFTER reading it (see the `.expire(...,-1)` pattern also used in the
+            // login/resetPassword code), regardless of whether the answer was
+            // correct, so the same token cannot be retried.
             let captchaRecord = await REDIS.hgetall(process.env.REDIS_DB_CAPTCHA, model.captchaToken);
             await REDIS.expire(process.env.REDIS_DB_CAPTCHA, model.captchaToken, -1);
 
@@ -173,7 +174,7 @@ NEWSCHEMA('Users/Users', function (schema) {
             }
 
             if (user.mfa && user.mfa.enabled) {
-                // Az MFA már be van állítva ezen a fiókon -> kód-ellenőrzés szükséges.
+                // MFA is already set up on this account -> code verification is required.
                 let pendingToken = GUID(40);
                 await REDIS.hset(process.env.REDIS_DB_MFA, pendingToken, 'stage', 'verify');
                 await REDIS.hset(process.env.REDIS_DB_MFA, pendingToken, 'userId', String(user._id));
@@ -196,9 +197,9 @@ NEWSCHEMA('Users/Users', function (schema) {
             let policy = SETTINGS.mfaPolicyFor(settings, user);
 
             if (policy === 'required') {
-                // A policy kötelezővé teszi az MFA-t, de ezen a fiókon még nincs
-                // beállítva (új regisztráció, vagy utólag lett kötelező) ->
-                // beállítás-kényszerítés a session létrehozása előtt.
+                // The policy makes MFA mandatory, but it's not yet set up on this
+                // account (new registration, or it became mandatory afterwards) ->
+                // enforce setup before the session is created.
                 let pendingToken = GUID(40);
                 await REDIS.hset(process.env.REDIS_DB_MFA, pendingToken, 'stage', 'setup');
                 await REDIS.hset(process.env.REDIS_DB_MFA, pendingToken, 'userId', String(user._id));
@@ -248,9 +249,9 @@ NEWSCHEMA('Users/Users', function (schema) {
                 return;
             }
 
-            // TOTP: a secret csak ideiglenesen, a pending tokenhez kötve kerül
-            // tárolásra — a user dokumentumba csak sikeres megerősítés (mfaSetupConfirm)
-            // után íródik.
+            // TOTP: the secret is only stored temporarily, bound to the pending
+            // token — it is only written into the user document after successful
+            // confirmation (mfaSetupConfirm).
             let secret = TOTP.generateSecret();
             await REDIS.hset(process.env.REDIS_DB_MFA, $.model.token, 'totpSecretPending', secret);
 
@@ -341,11 +342,11 @@ NEWSCHEMA('Users/Users', function (schema) {
         }
     });
 
-    // --- Önkiszolgáló MFA-kezelés (bejelentkezve, a /account oldalról) ---
-    // A login-időbeli mfaSetupSelect/Confirm-tól eltérően itt $.user már ismert
-    // (a session hitelesít), nincs szükség jelszó-ellenőrzésre — de a pending
-    // Redis-rekordba mentjük a userId-t is, hogy a confirm lépés ellenőrizhesse,
-    // hogy a token tényleg a hívó saját fiókjához tartozik.
+    // --- Self-service MFA management (logged in, from the /account page) ---
+    // Unlike the login-time mfaSetupSelect/Confirm, here $.user is already known
+    // (the session authenticates), no password verification is needed — but we
+    // also save the userId in the pending Redis record, so the confirm step can
+    // verify that the token really belongs to the caller's own account.
 
     schema.action('mfaSelfStart', {
         input: '*method:string',
@@ -478,8 +479,8 @@ NEWSCHEMA('Users/Users', function (schema) {
             let email = $.model.email.toLowerCase().trim();
             let user = await MDB.findOne(process.env.MONGODB_DB_NAME, 'users', { email: email });
 
-            // Szándékosan mindig sikeres választ adunk (e-mail cím létezésének
-            // kiszivárogtatását elkerülendő), a levél csak akkor megy ki, ha van user.
+            // We intentionally always return a success response (to avoid leaking
+            // whether the email address exists), the email is only sent if there is a user.
             if (user && !isDbError(user) && user.status === 'active') {
                 let code = GUID(40);
                 await REDIS.hset(process.env.REDIS_DB_CHANGE_PASSWORD, code, 'userId', String(user._id));
@@ -608,22 +609,22 @@ NEWSCHEMA('Users/Users', function (schema) {
         }
     });
 
-    // Admin: a MÁR manager jogosultsággal rendelkező (+ sa) felhasználók
-    // listája — kizárólag a diploma-szerkesztőn a felelős manager kiválasztó
-    // legördülőjéhez kell (lásd schemas/diplomas/diplomas.js 'save' action
-    // managerId-ellenőrzése) —, ezért bármelyik manager (nem csak sa)
-    // lekérheti. A teljes (bármely regisztrált felhasználó közötti) keresés és
-    // a manager-jogosultság kiosztása/tiltás a `/admin/users` superadmin-only
-    // felhasználó-kezelőben van (lásd adminList/adminGet/setStatus/setManager
-    // lent) — ez a `query` action itt SZÁNDÉKOSAN szűk körű maradt, nem
-    // bővítettem ki, mert más helyen (diploma-szerkesztő) is hívja.
+    // Admin: list of users who ALREADY have the manager permission (+ sa) —
+    // needed exclusively for the responsible-manager dropdown on the diploma
+    // editor (see the managerId check in the 'save' action in
+    // schemas/diplomas/diplomas.js) —, so any manager (not just sa) can call it.
+    // The full (search across any registered user) search and granting/revoking
+    // the manager permission live in the `/admin/users` superadmin-only user
+    // manager (see adminList/adminGet/setStatus/setManager below) — this `query`
+    // action here is INTENTIONALLY kept narrow in scope, I didn't extend it,
+    // because it's also called elsewhere (the diploma editor).
     //
-    // A `sa` felhasználókat IS beleérti, még ha a `permissions` tömbjükben
-    // nincs is ott szó szerint a 'manager' string (a superadmin jogosultsága
-    // nem azon a mezőn keresztül működik, hanem a keretrendszer automatikus
-    // sa-bypass-ával) — enélkül a superadmin soha nem jelenne meg a
-    // diploma-szerkesztő felelős manager választóján, holott ténylegesen ő is
-    // el tudja/kell tudja látni ezt a szerepet.
+    // It ALSO includes `sa` users, even if the 'manager' string is not literally
+    // present in their `permissions` array (the superadmin's permission doesn't
+    // work through that field, but through the framework's automatic sa bypass)
+    // — without this, the superadmin would never show up in the diploma editor's
+    // responsible-manager selector, even though they can/must actually be able
+    // to fill this role too.
     schema.action('query', {
         action: async function ($) {
             let isManager = !!($.user && ($.user.sa || ($.user.permissions || []).indexOf('manager') !== -1));
@@ -646,17 +647,17 @@ NEWSCHEMA('Users/Users', function (schema) {
         }
     });
 
-    // --- Superadmin-only felhasználó-kezelő (/admin/users, felhasználói kérésre) ---
-    // Lapozható/kereshető lista (email/hívójel/név szerint, szabad szöveges
-    // keresés), egyedi adatlap, tiltás/visszakapcsolás (users.status
-    // 'active'<->'disabled' — a login action MÁR MOST elutasítja a nem
-    // 'active' állapotú fiókot, lásd a 'login' actiont fent, ezért ehhez nem
-    // kellett új tiltás-logika, csak ez az admin-oldali kapcsoló). A
-    // manager-jogosultság kiosztása/visszavonása a MEGLÉVŐ setManager
-    // actiont hívja (lásd lent) — az korábban a settings-admin oldal
-    // "Diploma-managerek" szekciójából volt hívva, onnan a felhasználói
-    // kérésre ide, a user-kezelőbe költözött (konszolidáció, hogy egy helyen
-    // legyen minden user-admin funkció).
+    // --- Superadmin-only user manager (/admin/users, at the user's request) ---
+    // Pageable/searchable list (by email/callsign/name, free-text search), an
+    // individual record page, disabling/re-enabling (users.status
+    // 'active'<->'disabled' — the login action ALREADY rejects an account that
+    // is not in 'active' status, see the 'login' action above, so no new
+    // disabling logic was needed for this, just this admin-side toggle). Granting/
+    // revoking the manager permission calls the EXISTING setManager action (see
+    // below) — that used to be called from the "Diploma managers" section of the
+    // settings-admin page, and at the user's request it moved from there to here,
+    // into the user manager (consolidation, so all user-admin functionality lives
+    // in one place).
     schema.action('adminList', {
         action: async function ($) {
             if (!$.user || !$.user.sa) {
@@ -732,9 +733,9 @@ NEWSCHEMA('Users/Users', function (schema) {
                 return;
             }
 
-            // Superadmin fiók tiltása szándékosan tiltva innen (véletlen
-            // kizárás elkerülése — beleértve a saját fiókot is, hiszen a
-            // hívó user is 'sa').
+            // Disabling a superadmin account is intentionally forbidden from here
+            // (to avoid accidental lockout — including one's own account, since
+            // the calling user is also 'sa').
             if (target.sa) {
                 $.callback({ success: false, message: RESOURCE($.language, 'error.user.cannot_disable_sa') });
                 return;
@@ -783,16 +784,17 @@ function isDbError(result) {
     return Array.isArray(result) && result[0] != null && result[0].error != null;
 }
 
-// A SUPERUSER_EMAIL env változó vesszővel elválasztva TÖBB e-mail címet is
-// tartalmazhat (pl. ha a fő superadmin nyaral, legyen egy másik fiók is, ami
-// regisztrációkor automatikusan superadmin lesz) — lásd docker/dev.env. Csak
-// REGISZTRÁCIÓKOR fut le (lásd a 'register' actiont): ha valaki már korábban,
-// nem-superadminként regisztrált, és utólag kerül be az e-mailje ebbe a
-// listába, az ő meglévő fiókja ettől even NEM válik automatikusan sa-vá — azt
-// egy managernek/superadminnak kézzel (Mongóban) kell utólag beállítania,
-// ehhez itt nincs admin UI (a `sa` mező szándékosan nincs kiosztható a
-// settings-admin "Diploma-managerek" szekciójából sem, lásd ott a kommentet —
-// az csak a 'manager' permissiont kezeli, nem a superadmin flaget).
+// The SUPERUSER_EMAIL env variable may contain MULTIPLE, comma-separated email
+// addresses (e.g. if the main superadmin is on vacation, there should be
+// another account that automatically becomes superadmin on registration) — see
+// docker/dev.env. This only runs AT REGISTRATION TIME (see the 'register'
+// action): if someone already registered earlier as a non-superadmin, and their
+// email is added to this list afterwards, their existing account still does NOT
+// automatically become sa because of this — a manager/superadmin has to set
+// this manually (in Mongo) afterwards, there is no admin UI for this here (the
+// `sa` field is intentionally not assignable from the settings-admin "Diploma
+// managers" section either, see the comment there — that only manages the
+// 'manager' permission, not the superadmin flag).
 function isSuperuserEmail(email) {
     let list = (process.env.SUPERUSER_EMAIL || '').split(',').map(e => e.toLowerCase().trim()).filter(e => e);
     return list.indexOf((email || '').toLowerCase().trim()) !== -1;
@@ -818,8 +820,8 @@ function sendMfaCodeEmail($, user, code) {
     });
 }
 
-// Session létrehozása Redisben + auth/lang cookie beállítása. Közös a "nincs
-// MFA" login ágnak és a két MFA-lezáró actionnek (mfaSetupConfirm, mfaVerify).
+// Creates the session in Redis + sets the auth/lang cookie. Shared by the
+// "no MFA" login branch and the two MFA-closing actions (mfaSetupConfirm, mfaVerify).
 async function createSession($, user) {
     let sessionId = GUID(40);
     let ttlSession = Number(process.env.TTL_SESSION);

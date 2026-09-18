@@ -34,6 +34,7 @@ async function loadDiploma() {
 	document.getElementById('input_challenge_qsl_sample_count').value = challenge.qslSampleCount || 0;
 	document.getElementById('input_challenge_allowed_bands').value = Array.isArray(challenge.allowedBands) ? challenge.allowedBands.join(', ') : '';
 	document.getElementById('input_challenge_allowed_modes').value = Array.isArray(challenge.allowedModes) ? challenge.allowedModes.join(', ') : '';
+	document.getElementById('input_challenge_comment_filter_regex').value = challenge.commentFilterRegex || '';
 
 	if (Array.isArray(challenge.targetPool)) {
 		for (let i = 0, n = challenge.targetPool.length; i < n; i++) {
@@ -58,10 +59,10 @@ async function loadDiploma() {
 	serialStartInput.value = d.serialStart || 1;
 	serialStartInput.disabled = true;
 
-	// Lásd a pendingManagerId kommentjét (00_init.js) — a select_manager_id
-	// opciói egy másik, független fetch-ből (05_manager.js) töltődnek be, ezért
-	// itt csak megpróbáljuk beállítani (ha az opciók még nincsenek kész, ez
-	// néma no-op, és a 05_manager.js fogja utólag alkalmazni pendingManagerId-ból).
+	// See the pendingManagerId comment (00_init.js) — the select_manager_id
+	// options are loaded from another, independent fetch (05_manager.js), so
+	// here we just try to set it (if the options aren't ready yet, this is a
+	// silent no-op, and 05_manager.js will apply it later from pendingManagerId).
 	pendingManagerId = d.managerId || '';
 	select_manager_id.value = pendingManagerId;
 
@@ -79,11 +80,11 @@ async function loadDiploma() {
 	document.getElementById('input_repeater_points').value = d.repeaterPoints || 0;
 	syncRepeaterPointsVisibility();
 
-	// Fokozatok/kategóriák betöltése (lásd 25_tiers.js) — szándékosan NEM
-	// dispatch-eljük az input_tiers_enabled 'change' eseményét, mert annak van
-	// egy kényelmi mellékhatása (üres kategória-sor automatikus hozzáadása), ami
-	// itt, valódi mentett adatoknál nem kívánt; helyette közvetlenül állítjuk be
-	// az állapotot és a saját sorokat rendereljük.
+	// Loading tiers/categories (see 25_tiers.js) — we deliberately do NOT
+	// dispatch the input_tiers_enabled 'change' event, because it has a
+	// convenience side effect (automatically adding an empty category row) that
+	// is unwanted here, with real saved data; instead we set the state directly
+	// and render our own rows.
 	input_tiers_enabled.checked = !!d.tiersEnabled;
 	input_categories_enabled.checked = !!d.categoriesEnabled;
 	tiers_config.classList.toggle('is-hidden', !d.tiersEnabled);
@@ -140,10 +141,10 @@ async function loadDiploma() {
 		document.getElementById('input_bank_note').value = d.bankTransferDetails.note || '';
 	}
 
-	// Ha a diplomának már van mentett elrendezése, azt (akár részlegesen, csak
-	// néhány mezővel) vesszük át — a jelölőnégyzetek ez alapján állnak be
-	// (syncOverlayToggles). Ha még sosem lett elrendezés elmentve, mind a hat
-	// alapértelmezett mezővel indulunk (mint egy új diplománál).
+	// If the diploma already has a saved layout, we take that over (even if
+	// only partially, with just a few fields) — the checkboxes are set based on
+	// this (syncOverlayToggles). If no layout has ever been saved, we start with
+	// all six default fields (as with a new diploma).
 	overlayFieldsState = (Array.isArray(d.overlayFields) && d.overlayFields.length)
 		? d.overlayFields
 		: DEFAULT_ACTIVE_OVERLAY_KEYS.map(k => Object.assign({}, DEFAULT_OVERLAY_FIELDS[k]));

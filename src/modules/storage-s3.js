@@ -1,16 +1,16 @@
-// storage-s3.js — S3-kompatibilis (AWS S3 / Backblaze B2 / Cloudflare R2 /
-// MinIO) storage driver. Ugyanazt a driver-független API-t valósítja meg,
-// mint a storage-local.js (save/read/exists/delete/serve — lásd ott a
-// szerződés részletes leírását). A `serve()` NEM proxyz bájtokat a Node
-// szerveren keresztül: egy rövid élettartamú, ALÁÍRT (presigned) URL-re
-// irányítja át a böngészőt — ez a szokásos, hatékony S3-minta (a fájl
-// tartalma közvetlenül a bucket-szolgáltatótól megy a böngészőhöz, nem
-// terheli a mi szerverünk sávszélességét/memóriáját).
+// storage-s3.js — S3-compatible (AWS S3 / Backblaze B2 / Cloudflare R2 /
+// MinIO) storage driver. Implements the same driver-independent API as
+// storage-local.js (save/read/exists/delete/serve — see there for the
+// detailed description of the contract). `serve()` does NOT proxy bytes
+// through the Node server: it redirects the browser to a short-lived, SIGNED
+// (presigned) URL — this is the usual, efficient S3 pattern (the file
+// content goes straight from the bucket provider to the browser, without
+// burdening our server's bandwidth/memory).
 //
-// `S3Client` példányosítása MAGÁBAN nem csinál hálózati hívást — ha
-// `STORAGE_DRIVER=local` van beállítva (fejlesztői alapértelmezés), ez a
-// modul akkor is betöltődik (minden `modules/` fájl automatikusan fut), de
-// sose kerül ténylegesen meghívásra (lásd definitions/09_storage.js).
+// Instantiating `S3Client` BY ITSELF makes no network call — if
+// `STORAGE_DRIVER=local` is set (the dev default), this module still loads
+// (every `modules/` file runs automatically), but it never actually gets
+// invoked (see definitions/09_storage.js).
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
@@ -18,9 +18,9 @@ global.STORAGE_S3 = {};
 
 STORAGE_S3.driver = 's3';
 
-// A presigned URL érvényességi ideje — elég rövid, hogy egy esetlegesen
-// megosztott/naplózott link ne maradjon sokáig felhasználható, de elég hosszú
-// egy normál letöltéshez/oldalbetöltéshez.
+// The presigned URL's validity period — short enough that an accidentally
+// shared/logged link doesn't stay usable for long, but long enough for a
+// normal download/page load.
 const PRESIGN_TTL_SECONDS = 900;
 
 const MIME_BY_EXT = {
@@ -36,10 +36,10 @@ function contentTypeByKey(key) {
 let client = new S3Client({
     region: process.env.S3_REGION || 'auto',
     endpoint: process.env.S3_ENDPOINT || undefined,
-    // Backblaze B2/MinIO/legtöbb S3-kompatibilis szolgáltató "path style"
-    // URL-eket vár (https://endpoint/bucket/key), NEM a virtuális-host stílust
-    // (https://bucket.endpoint/key), amit az AWS SDK alapértelmezésben feltesz
-    // — ezért van rá külön env-kapcsoló (lásd docker/dev.env.example).
+    // Backblaze B2/MinIO/most S3-compatible providers expect "path style"
+    // URLs (https://endpoint/bucket/key), NOT the virtual-host style
+    // (https://bucket.endpoint/key) that the AWS SDK assumes by default —
+    // that's why there's a dedicated env switch for it (see docker/dev.env.example).
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
     credentials: {
         accessKeyId: process.env.S3_ACCESS_KEY,
@@ -76,9 +76,9 @@ STORAGE_S3.delete = async function (key) {
     try {
         await client.send(new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }));
     } catch (e) {
-        // A local driver delete()-je is néma, ha a fájl már nincs ott
-        // (FS.existsSync ellenőrzés előtte) — itt a legegyszerűbb ezt egy
-        // "nem létezik" hibánál ugyanígy elnyelni, konzisztensen.
+        // The local driver's delete() is also silent if the file is already
+        // gone (it checks with FS.existsSync beforehand) — here it's simplest
+        // to swallow a "doesn't exist" error the same way, for consistency.
     }
 };
 

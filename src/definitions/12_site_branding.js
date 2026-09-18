@@ -1,10 +1,10 @@
-// A `views/layout.html` (oldalsáv logó + cím) MINDEN oldalon renderelődik,
-// nem csak a home controlleren keresztül — ezért ezt itt, egy globális
-// `ON('controller')` hookkal töltjük a repository-ba minden egyes requestnél,
-// NEM az egyes controllerek repository-jából. A hook szinkron (nincs módja
-// megvárni egy Mongo-hívást), ezért a `SETTINGS.cache`-re támaszkodik (lásd
-// modules/settings-store.js) — ha a cache még nincs bemelegítve (induláskor,
-// az `ON('ready')` lefutása előtti pillanatban), a defaultra esik vissza.
+// `views/layout.html` (sidebar logo + title) is rendered on EVERY page, not
+// only through the home controller — so we load it into the repository here,
+// via a global `ON('controller')` hook, on every single request, NOT from
+// each individual controller's repository. The hook is synchronous (it has no
+// way to await a Mongo call), so it relies on `SETTINGS.cache` (see
+// modules/settings-store.js) — if the cache isn't warmed up yet (at startup,
+// the moment before `ON('ready')` runs), it falls back to the default.
 ON('controller', function (controller) {
     let settings = SETTINGS.cache || SETTINGS.DEFAULTS;
 

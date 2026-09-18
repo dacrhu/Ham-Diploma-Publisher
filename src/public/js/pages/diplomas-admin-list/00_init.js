@@ -20,9 +20,9 @@ async function loadDiplomas() {
 	for (let i = 0, n = json.data.length; i < n; i++) {
 		let d = json.data[i];
 		let created = d.created ? new Date(d.created).toLocaleDateString() : '';
-		// managerInfo-t a szerver (Diplomas/Diplomas query action) állítja elő a
-		// diploma managerId mezőjéből (lásd schemas/diplomas/diplomas.js
-		// attachManagerInfo) — null, ha nincs kijelölve felelős manager.
+		// managerInfo is produced by the server (Diplomas/Diplomas query action)
+		// from the diploma's managerId field (see schemas/diplomas/diplomas.js
+		// attachManagerInfo) — null if no responsible manager is assigned.
 		let managerText = d.managerInfo ? (d.managerInfo.callsign || d.managerInfo.email) : '—';
 		let isChallenge = d.type === 'challenge';
 		let tr = `<tr data-id="${d._id}">

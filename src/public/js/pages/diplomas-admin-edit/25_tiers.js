@@ -1,26 +1,26 @@
-// Fokozatok (pl. Bronz/Ezüst/Arany) és opcionális adásmód szerinti kategóriák
-// (pl. CW/Phone/Mixed, mindegyiknek saját fokozat-létrával) — csak pontozás
-// módban értelmezett, lásd a tiers_block is-hidden váltását a 20_rules.js
-// ruleMode-onchange kezelőjében. A tényleges kiértékelés (melyik kategória és
-// fokozat teljesült egy beadványnál) a 6. lépés rule-engine-jében történik majd
-// — ez itt csak az admin-oldali beállítás.
+// Tiers (e.g. Bronze/Silver/Gold) and optional mode-based categories
+// (e.g. CW/Phone/Mixed, each with its own tier ladder) — only relevant in
+// scoring mode, see the tiers_block is-hidden toggle in 20_rules.js's
+// ruleMode-onchange handler. The actual evaluation (which category and tier
+// a submission satisfies) will happen in step 6's rule engine — this here is
+// just the admin-side configuration.
 //
-// FONTOS: a kategóriának NINCS szabadon beírható neve — a felhasználó jelezte,
-// hogy egy külön "Kategória neve" mező zavaró volt, nem világos a kapcsolata az
-// adásmód-szűrővel. Ehelyett a kategória címkéje MINDIG az adásmód-szűrőből
-// származik (lásd a szerveroldali categoryLabelFor()-t is,
-// schemas/diplomas/diplomas.js-ben) — a manager csak a szűrőt választja ki.
+// IMPORTANT: a category does NOT have a freely-typed name — the user pointed
+// out that a separate "Category name" field was confusing, its relationship
+// to the mode filter wasn't clear. Instead, the category's label ALWAYS
+// comes from the mode filter (see the server-side categoryLabelFor() too, in
+// schemas/diplomas/diplomas.js) — the manager only picks the filter.
 //
-// FONTOS #2: a user rájött, hogy a diplománál már meglévő körzet szerinti
-// (hazai/EU/DX) minimum ponthatár koncepció a fokozatokra is vonatkozik — ha
-// egy diplománál a sima (fokozat nélküli) minimum körzetenként más, akkor egy
-// adott fokozat (pl. "Bronz") elérési küszöbe is más lehet körzetenként. Ezért
-// egy fokozat `minPoints`-a NEM egyetlen szám, hanem `{home, eu, dx}` — pont
-// úgy, mint a diploma-szintű `zoneThresholds`. Ha fokozatok vannak bekapcsolva,
-// a diploma-szintű sima `zoneThresholds` blokk elrejtésre kerül (lásd
-// zone_flat_thresholds/zone_flat_thresholds_tiers_note), mert a szerepét ekkor
-// a fokozatonkénti körzet-küszöbök veszik át — a `homeCountry` viszont továbbra
-// is kell (az dönti el, melyik körzetbe esik a jelentkező).
+// IMPORTANT #2: the user realized that the zone-based (home/EU/DX) minimum
+// point threshold concept already present at the diploma level also applies
+// to tiers — if a diploma's plain (tier-less) minimum differs per zone, then
+// a given tier's (e.g. "Bronze") threshold can also differ per zone.
+// Therefore a tier's `minPoints` is NOT a single number, but `{home, eu, dx}`
+// — just like the diploma-level `zoneThresholds`. If tiers are enabled, the
+// diploma-level plain `zoneThresholds` block is hidden (see
+// zone_flat_thresholds/zone_flat_thresholds_tiers_note), because its role is
+// then taken over by the per-tier zone thresholds — but `homeCountry` is
+// still needed (it decides which zone the applicant falls into).
 const input_tiers_enabled = document.getElementById('input_tiers_enabled');
 const input_categories_enabled = document.getElementById('input_categories_enabled');
 const tiers_block = document.getElementById('tiers_block');
@@ -30,16 +30,16 @@ const button_add_category = document.getElementById('button_add_category');
 const zone_flat_thresholds = document.getElementById('zone_flat_thresholds');
 const zone_flat_thresholds_tiers_note = document.getElementById('zone_flat_thresholds_tiers_note');
 
-// Dinamikusan generált (JS-ben renderelt) mezőcímkék — ugyanaz a minta, mint a
-// 20_rules.js RULE_I18N-jénél: ezek a szövegek nem statikus HTML-ben vannak,
-// hanem futásidőben, tetszőleges számú kategória/fokozat-sorhoz generálódnak,
-// ezért nem tudjuk @(#kulcs) resource-interpolációval szerver-oldalon renderelni
-// (a többi, statikus felirat a resource fájlokban van, lásd edit.html). A
-// group_hint_* szövegek az adásmód-szűrő <option>-jeinek `title` tooltipje —
-// főleg az "Image" csoportnál hasznos, mert az kevésbé magától értetődő
-// (SSTV/FAX/ATV — képi adásmódok), mint a CW/Phone/Digital. A zone_* szövegek
-// ugyanazok a rövid körzet-nevek, mint a diplomas.zone.home/eu/dx resource
-// kulcsoknál — itt csak a fokozat-táblázat fejlécéhez kellenek duplikálva.
+// Dynamically generated (rendered in JS) field labels — same pattern as
+// 20_rules.js's RULE_I18N: these texts aren't in static HTML, but are
+// generated at runtime for an arbitrary number of category/tier rows,
+// so we can't render them server-side with @(#key) resource interpolation
+// (the rest of the static labels are in the resource files, see edit.html).
+// The group_hint_* texts are the `title` tooltip of the mode-filter
+// <option>s — mainly useful for the "Image" group, since it's less
+// self-explanatory (SSTV/FAX/ATV — image modes) than CW/Phone/Digital. The
+// zone_* texts are the same short zone names as the diplomas.zone.home/eu/dx
+// resource keys — here they're just duplicated for the tier table header.
 const TIERS_I18N = {
 	hu: {
 		category_mode_label: 'Adásmód szűrő',
@@ -185,10 +185,10 @@ function addCategoryRow(category) {
 	};
 }
 
-// Ha nincsenek bekapcsolva az adásmód szerinti kategóriák, csak 1 (implicit
-// "Mixed") kategória-sor maradhat, és rajta elrejtjük az adásmód-szűrőt +
-// törlés gombot (marad a puszta fokozat-táblázat) — lásd a szerveroldali
-// sanitizeCategories() ugyanezt kényszeríti ki.
+// If mode-based categories aren't enabled, only 1 (implicit "Mixed")
+// category row may remain, and on it we hide the mode filter + remove button
+// (leaving just the plain tier table) — see the server-side
+// sanitizeCategories(), which enforces the same thing.
 function refreshCategoriesUI() {
 	let categoriesEnabled = input_categories_enabled.checked;
 
@@ -273,7 +273,7 @@ feEventId(button_add_category, 'onclick', function () {
 	refreshCategoriesUI();
 });
 
-// Kezdeti állapot: checklist mód -> a teljes tiers_block elrejtve (lásd
-// 20_rules.js), a fokozat-beállítások (tiers_config) pedig alapból kikapcsolt
-// állapotot mutatnak, amíg a felhasználó be nem pipálja.
+// Initial state: checklist mode -> the whole tiers_block is hidden (see
+// 20_rules.js), and the tier settings (tiers_config) show a disabled state
+// by default, until the user checks the box.
 tiers_block.classList.add('is-hidden');

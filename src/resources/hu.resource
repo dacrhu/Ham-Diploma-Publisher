@@ -6,7 +6,7 @@ app.name : Ham Diploma Publisher
 
 menu.home : Főoldal
 menu.diplomas : Diplomák
-menu.contacts : Kapcsolatok
+menu.contacts : Kapcsolat
 menu.account : Fiók
 menu.profile : Profilom
 menu.my.submissions : Beadványaim
@@ -21,8 +21,13 @@ btn.cancel : Mégsem
 
 home.intro : Rádióamatőr diplomák (oklevelek) publikálása és igénylése egy helyen.
 
-contacts.title : Kapcsolatok
+contacts.title : Kapcsolat
 contacts.empty : Ez az oldal jelenleg üres — a tartalmat a manager a Beállítások oldalon tudja feltölteni.
+privacy.title : Adatvédelmi szabályzat
+menu.powered.by : Powered by Ham Diploma Publisher
+privacy.empty : Ez az oldal jelenleg üres — a tartalmat a manager a Beállítások oldalon tudja feltölteni.
+cookie.banner.text : Az oldal a működéséhez szükséges sütiket használ (bejelentkezés, nyelvi beállítás). Részletek:
+cookie.banner.accept : Rendben
 
 // --- Hibaüzenetek ---
 error.password.invalid : A jelszó nem felel meg a követelményeknek (min. 12 karakter, kis- és nagybetű, szám, speciális karakter).
@@ -42,6 +47,7 @@ error.user.cannot_disable_sa : Superadmin fiók nem tiltható.
 
 // --- Regisztráció ---
 register.title : Regisztráció
+register.required.hint : kötelező mező
 register.email.label : E-mail cím
 register.password.label : Jelszó
 register.password.confirm.label : Jelszó megerősítése
@@ -52,6 +58,7 @@ register.country.label : Ország
 register.street.label : Utca, házszám
 register.city.label : Város
 register.zip.label : Irányítószám
+register.address.hint : A cím megadása csak akkor kötelező, ha a diplomát postai úton, nyomtatva szeretné megkapni — ha ezt nem kéri, üresen is hagyhatja.
 register.submit : Regisztráció
 register.success.title : Sikeres regisztráció
 register.success.text : Megerősítő e-mailt küldtünk a megadott címre. Kérjük, kattintson a benne lévő linkre a fiók aktiválásához.
@@ -240,9 +247,12 @@ diplomas.autoapprove.help : Ha a napló alapján a rendszer automatikusan megfel
 
 diplomas.challenge.notice : A jelentkezés/sorsolás/körönkénti napló-ellenőrzés folyamata még fejlesztés alatt áll — itt egyelőre csak a beállítások adhatók meg.
 diplomas.challenge.targetfield.label : Célpont-mező
-diplomas.challenge.targetfield.help : Melyik adatot sorsolja a rendszer körönként a lenti listából, és melyik napló-mezőben kell majd megtalálnia a rádióamatőr összeköttetésében.
+diplomas.challenge.targetfield.help : Melyik adatot sorsolja a rendszer körönként a lenti listából, és melyik napló-mezőben kell majd megtalálnia a rádióamatőr összeköttetésében. "Ország" esetén az Érték oszlopba hívójel-prefixet írjon (pl. "HA", "OE") — a rendszer azt nézi, hogy a naplóban szereplő hívójel ezzel kezdődik-e.
+diplomas.challenge.commentfilter.label : Comment szűrő (reguláris kifejezés, opcionális)
+diplomas.challenge.commentfilter.placeholder : pl. TG[0-9]{3,4}
+diplomas.challenge.commentfilter.help : Önálló, a fenti "Célpont-mező"/célpont-listától FÜGGETLEN, MINDEN QSO-ra érvényes feltétel — ha ki van töltve, egy QSO csak akkor számít bele a kihívásba, ha a napló COMMENT mezője illeszkedik erre a reguláris kifejezésre IS, a célpont-egyezés MELLETT (ÉS-kapcsolat). Például: Célpont-mező "Ország", lista: "HA", "OE" (hívójel-prefixek), ide pedig "TG[0-9]{3,4}" — egy "HA1AA" hívójelű, "TG123" kommentű QSO érvényes (a hívójel HA-val kezdődik ÉS a komment 3-4 számjegyű TG-mintára illeszkedik), egy "OE1BB" / "TG98" QSO viszont NEM (a komment csak 2 számjegyű, nem felel meg a mintának), még ha a hívójel-prefix egyébként megfelelne is. Üresen hagyva nincs ilyen külön feltétel.
 diplomas.challenge.targetfield.call : Hívójel
-diplomas.challenge.targetfield.country : Ország
+diplomas.challenge.targetfield.country : Ország (hívójel-prefix alapján)
 diplomas.challenge.targetfield.comment : Egyéb azonosító (napló Megjegyzés mezőjében, pl. átjátszó/talkgroup)
 diplomas.challenge.allowedbands.label : Engedélyezett sávok (vesszővel elválasztva)
 diplomas.challenge.allowedbands.help : Ha kitölti (pl. "80m, 40m, 20m"), egy körben csak az itt felsorolt sávon teljesített összeköttetés érvényes — egy másik sávon (pl. 2m) teljesített QSO automatikusan érvénytelen. Üresen hagyva: nincs sáv-korlátozás.
@@ -251,7 +261,7 @@ diplomas.challenge.allowedmodes.label : Engedélyezett adásmódok (vesszővel e
 diplomas.challenge.allowedmodes.help : Ha kitölti (pl. "FT8, DMR"), egy körben csak az itt felsorolt adásmóddal teljesített összeköttetés érvényes — egy másik adásmóddal teljesített QSO automatikusan érvénytelen. Üresen hagyva: nincs adásmód-korlátozás.
 diplomas.challenge.allowedmodes.placeholder : pl. FT8, DMR
 diplomas.challenge.pool.label : Célpont-lista (pool)
-diplomas.challenge.pool.help : Ezekből sorsol a rendszer körönként. A "Címke" opcionális, csak megjelenítésre szolgál (pl. ország neve, talkgroup neve).
+diplomas.challenge.pool.help : Ezekből sorsol a rendszer körönként. A "Címke" opcionális, csak megjelenítésre szolgál (pl. ország neve). "Ország" Célpont-mezőnél az Érték oszlopba hívójel-prefixet írjon (pl. "HA"), a Címkébe pedig a megjelenítendő nevet (pl. "Magyarország").
 diplomas.challenge.pool.col.value : Érték
 diplomas.challenge.pool.col.label : Címke (opcionális)
 diplomas.challenge.pool.add : Elem hozzáadása
@@ -375,7 +385,8 @@ diplomas.public.detail.cta.login : A jelentkezéshez be kell jelentkeznie.
 diplomas.public.detail.cta.login.button : Bejelentkezés
 diplomas.public.detail.cta.register.text : Még nincs fiókja?
 diplomas.public.detail.cta.register.button : Regisztráció
-diplomas.public.detail.cta.soon : A napló beadásának funkciója hamarosan elérhető.
+diplomas.public.detail.cta.apply.intro : A jelentkezéssel elindul az első kör: a rendszer kisorsolja a célpontokat, amelyeket ebben a körben teljesítenie kell.
+diplomas.public.detail.cta.apply.button : Jelentkezés a kihívásra
 diplomas.public.detail.cta.submit.button : Napló feltöltése / Beadás
 diplomas.public.detail.cta.expired : A beadási határidő lejárt, ehhez a diplomához már nem lehet naplót beadni.
 diplomas.public.detail.cta.existing : Ehhez a diplomához már van beadványa.
@@ -397,9 +408,15 @@ error.diploma.create.forbidden : Új diploma létrehozásához superadmin jogosu
 error.diploma.challenge.target_field : Válasszon célpont-mezőt a Kihívás fülön (hívójel / ország / egyéb azonosító).
 error.diploma.challenge.pool_empty : Adjon meg legalább egy elemet a célpont-listához a Kihívás fülön.
 error.diploma.challenge.pool_too_small : A célpont-lista túl kicsi ennyi körhöz/sorsoláshoz ismétlés nélkül — bővítse a listát, csökkentse a körök/sorsolt darabszámot, vagy engedélyezze az ismétlődést.
+error.diploma.challenge.comment_regex : A Comment szűrő mezőben megadott érték nem érvényes reguláris kifejezés
 
 // --- MFA admin beállítások ---
 settings.title : Beállítások
+settings.tab.general : Általános
+settings.tab.contact : Kapcsolat
+settings.tab.privacy : Adatvédelem
+settings.tab.qsl : QSL típusok
+settings.tab.security : Biztonság
 settings.appearance.section : Megjelenés
 settings.appearance.logo.label : Egyedi logó (oldalsáv teteje, minden oldalon)
 settings.appearance.logo.choose : Fájl kiválasztása…
@@ -413,8 +430,12 @@ settings.appearance.defaultlanguage.label : Alapértelmezett nyelv
 settings.appearance.defaultlanguage.help : Ezt a nyelvet látja egy új látogató, akinek még nincs nyelvi sütije (pl. első látogatáskor) — bejelentkezés után mindig a saját fiókbeállítás, a nyelvváltóval pedig bármikor felülírható.
 settings.appearance.welcometext.label : Üdvözlő szöveg
 settings.appearance.welcometext.help : Soronként külön bekezdésként jelenik meg a főoldalon. Ha üresen hagyja, az alapértelmezett bemutatkozó szöveg látszik.
-settings.contacts.label : Kapcsolatok oldal tartalma
+settings.contacts.label : Kapcsolat oldal tartalma
 settings.contacts.help : Szabadon szerkeszthető tartalom a publikus "Kapcsolatok" oldalhoz — HTML tagek is megadhatók (pl. &lt;p&gt;, &lt;a href="..."&gt;, &lt;strong&gt;), a rendszer változtatás nélkül, ténylegesen HTML-ként jeleníti meg. Mivel ide bármilyen HTML kerülhet, csak megbízható (manager/sa) forrásból töltse fel.
+settings.privacy.label : Adatvédelmi szabályzat tartalma
+settings.privacy.help : Szabadon szerkeszthető tartalom a publikus "Adatvédelmi szabályzat" oldalhoz (HTML tagek is megadhatók, ugyanúgy, mint a Kapcsolat oldalnál). Töltse ki, ki az adatkezelő, milyen szerveren/hostingnál üzemel az oldal, és — ha szükséges — más nyelvű fordítást is betehet, egyszerűen az angol szöveg alá írva, ugyanebbe a mezőbe.
+settings.qsl.label : Elfogadott QSL-igazolás típusok
+settings.qsl.help : Ezek a típusok jelennek meg a diploma-jelentkezéseknél a QSL-igazolás feltöltésekor, tájékoztatásul, hogy milyen forrásból származó igazolást fogadunk el.
 settings.mfa.section : Kétfaktoros hitelesítés (MFA)
 settings.mfa.user.label : Rádióamatőrök
 settings.mfa.manager.label : Managerek
@@ -424,7 +445,6 @@ settings.mfa.policy.required : Kötelező
 settings.mfa.methods.label : Engedélyezett módszerek
 settings.submit : Mentés
 settings.saved : A beállítások elmentve.
-settings.managers.moved.hint : A diploma-managerek kijelölése és a felhasználók tiltása mostantól a "Felhasználók" menüpont alatt (/admin/users) érhető el.
 // --- Felhasználó-kezelő (/admin/users, superadmin-only, felhasználói kérésre) ---
 users.admin.title : Felhasználók
 users.admin.search.placeholder : Keresés hívójel, név vagy e-mail alapján…
@@ -527,6 +547,7 @@ submissions.status.rejected : Elutasítva
 submissions.status.awaiting_payment : Fizetésre vár
 submissions.status.paid : Fizetve
 submissions.status.completed : Teljesítve
+submissions.status.challenge_in_progress : Kihívás folyamatban
 
 error.submission.notfound : A beadvány nem található.
 error.submission.forbidden : Ehhez a beadványhoz nincs jogosultsága.
@@ -536,11 +557,50 @@ error.submission.qsl.file.required : Válasszon ki egy képet vagy PDF-et a QSL-
 
 submissions.detail.qsl.title : QSL-igazolás
 submissions.detail.qsl.intro : A rendszer az alábbi összeköttetésekhez kér QSL-igazolást (screenshot vagy scan) — a beadvány csak akkor kerül elbírálásra, ha mindegyikhez feltöltötte.
+submissions.detail.qsl.types.label : Elfogadott igazolás-típusok:
+submissions.detail.qsl.types.hint : Töltsön fel egy screenshotot vagy scannelt képet, amelyen jól látható a konfirmációs jelölés (pl. QRZ-nél a kis csillag, Clublog-nál a zöld "C" jelzés, LoTW/eQSL/HRDLog/iQSL esetén a megerősített QSO állapota, papír QSL-nél maga a lap).
+qsl.type.lotw : LoTW
+qsl.type.eqsl : eQSL
+qsl.type.qrz : QRZ
+qsl.type.clublog : Clublog
+qsl.type.hrdlog : HRDLog / iQSL
+qsl.type.email : E-mail QSL
+qsl.type.paper : Papír QSL
 submissions.detail.qsl.col.call : Hívójel
 submissions.detail.qsl.col.image : Igazolás
 submissions.detail.qsl.uploaded : Feltöltve — megtekintés
 submissions.detail.qsl.choose : Fájl kiválasztása
 submissions.detail.qsl.upload.button : Feltöltés
+submissions.detail.challenge.round.label : Kör
+submissions.detail.challenge.deadline.label : Aktuális kör határideje
+submissions.detail.challenge.deadline.missed : A(z) {0}. kör határideje lejárt, mielőtt minden célpontot teljesített volna — a kihívást emiatt a rendszer elutasította, ugyanúgy, mint egy elutasított diplomát a normál elbírálásnál.
+submissions.detail.challenge.rounds.title : Körök
+submissions.detail.challenge.round.col.number : Kör
+submissions.detail.challenge.round.col.status : Állapot
+submissions.detail.challenge.round.col.deadline : Határidő
+submissions.detail.challenge.round.col.targets : Célpontok
+submissions.detail.challenge.round.status.awaiting_log : Napló feltöltésére vár
+submissions.detail.challenge.round.status.awaiting_qsl : QSL-igazolásra vár
+submissions.detail.challenge.round.status.completed : Teljesítve
+submissions.detail.challenge.log.title : Napló feltöltése ehhez a körhöz
+submissions.detail.challenge.log.progress : célpont teljesítve eddig
+submissions.detail.challenge.log.result.title : Az utolsó feltöltés eredménye
+submissions.detail.challenge.log.result.col.call : Hívójel
+submissions.detail.challenge.log.result.col.band : Sáv
+submissions.detail.challenge.log.result.col.mode : Mód
+submissions.detail.challenge.log.result.col.comment : Komment
+submissions.detail.challenge.log.result.col.result : Eredmény
+submissions.detail.challenge.qso.matched : Teljesítette: {0}
+submissions.detail.challenge.qso.reason.band : A sáv nem szerepel az ehhez a kihíváshoz engedélyezettek között
+submissions.detail.challenge.qso.reason.mode : Az adásmód nem szerepel az ehhez a kihíváshoz engedélyezettek között
+submissions.detail.challenge.qso.reason.comment_filter : A komment nem felel meg az elvárt formátumnak
+submissions.detail.challenge.qso.reason.already_matched : Ez a célpont már teljesült egy másik összeköttetéssel — ez az összeköttetés fölösleges
+submissions.detail.challenge.qso.reason.no_target_match_call : A hívójel nem egyezik egyik kisorsolt célponttal sem
+submissions.detail.challenge.qso.reason.no_target_match_comment : A komment nem egyezik egyik kisorsolt célponttal sem
+submissions.detail.challenge.qso.reason.no_target_match_country : A hívójel nem a kisorsolt országok (előtagok) egyikével sem kezdődik
+submissions.detail.challenge.log.choose : Napló fájl kiválasztása
+submissions.detail.challenge.log.upload.button : Feltöltés
+submissions.detail.challenge.qsl.title : QSL-igazolás ehhez a körhöz
 
 // --- Manager elbírálás (8. lépés) ---
 menu.admin.review : Elbírálás
@@ -596,6 +656,9 @@ email.submission.review_needed.btn : Beadvány megtekintése
 email.submission.qsl_needed.subject : QSL-igazolás feltöltése szükséges
 email.submission.qsl_needed.intro : A(z) "{0}" diplomához beadott naplójából {1} db QSO-hoz QSL-igazolást (kép vagy szkennelt másolat) kell feltöltenie, hogy a beadvány elbírálásra kerülhessen.
 email.submission.qsl_needed.btn : QSL feltöltése
+email.submission.challenge_failed.subject : Kihívás sikertelen — lejárt határidő
+email.submission.challenge_failed.intro : Sajnálattal értesítjük, hogy a(z) {0}. kör határideje lejárt, mielőtt minden célpontot teljesített volna, ezért a rendszer elutasította a kihívást.
+email.submission.challenge_failed.btn : Beadvány megtekintése
 
 error.payment.state : A beadvány jelenleg nincs ehhez a fizetési művelethez megfelelő állapotban.
 error.payment.method : Érvénytelen vagy nem elérhető fizetési mód ehhez a diplomához.

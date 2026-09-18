@@ -1,41 +1,41 @@
-// diplomas-public.js — a rádióamatőrök (regisztráció nélkül is) által elérhető
-// diploma-lista és részletező oldal: csak `status:'active'` diplomák, a
-// szabályrendszer olvasható (nem admin-szerkeszthető) megjelenítésével + a
-// biankó kép VÍZJELES előnézetével. Minden szerver-oldalon renderelt, nincs
-// saját JS/API — a
-// diploma-lista/részletező statikus tartalom, nem kell hozzá kliens-oldali
-// fetch (szemben az admin oldalakkal, amik SPA-szerűen működnek).
+// diplomas-public.js — the diploma list and detail page accessible to radio
+// amateurs (even without registration): only `status:'active'` diplomas, with a
+// read-only (not admin-editable) display of the rule set + a WATERMARKED
+// preview of the blank image. Fully server-side rendered, no
+// dedicated JS/API — the
+// diploma list/detail is static content, it doesn't need client-side
+// fetch (unlike the admin pages, which work like an SPA).
 //
-// Az '{0}'/'{field}'/'{value}' jelölésű resource-sablonokat itt, controller
-// JS-ben helyettesítjük be RESOURCE()-szal (NEM a view '@(#kulcs)' motorján
-// keresztül, ami nem támogat paramétereket) — ugyanaz a minta, mint az
-// email-küldésnél (lásd CLAUDE.md "Email küldés" szakasza).
+// The resource templates marked '{0}'/'{field}'/'{value}' are substituted here, in the
+// controller JS, using RESOURCE() (NOT through the view's '@(#key)' engine,
+// which doesn't support parameters) — the same pattern as
+// email sending (see the "Sending email" section of CLAUDE.md).
 
-// Csoport-címkék (adásmód szerinti pontozás 'group' operátora) — szándékosan
-// angol szavak, ugyanúgy, ahogy a schemas/diplomas/diplomas.js CATEGORY_LABELS
-// is (a kategória-címkék is mindig ezek, nyelvfüggetlenül).
+// Group labels (the 'group' operator of per-mode scoring) — intentionally
+// English words, just like schemas/diplomas/diplomas.js's CATEGORY_LABELS
+// too (the category labels are also always these, regardless of language).
 const GROUP_LABELS = { CW: 'CW', PHONE: 'Phone', DIGITAL: 'Digital', IMAGE: 'Image' };
 const BAND_GROUP_LABELS = { HF: 'HF', VHF: 'VHF', UHF: 'UHF' };
 
-// "Megvan"-jelzés a diploma-listán (felhasználói kérésre) — a `submissions`
-// séma (schemas/submissions/submissions.js `decide` action) állapotgépe
-// alapján `approved`/`paid`/`completed` MIND azt jelenti, hogy az oklevél
-// ténylegesen kiadásra került (a PDF már legenerálva, letölthető):
-// `approved` a VÉGÁLLAPOT ingyenes okleveleknél (nincs mibe fizetni), `paid`
-// a VÉGÁLLAPOT fizetős, PDF-only kézbesítésnél — a `completed` KIZÁRÓLAG a
-// fizikai (nyomtatott/postázott) kézbesítésű okleveleknél jön létre, amikor a
-// manager kézzel jelöli "teljesítve"-nek. Ezért mindhárom "OWNED"-nak számít,
-// NEM csak a `completed` — eredetileg csak a `completed`-et vettük ide, de ez
-// épp a leggyakoribb esetet (ingyenes/PDF-fizetős oklevél) hagyta figyelmen
-// kívül, lásd a felhasználói visszajelzést. Az `awaiting_payment` (még nem
-// fizetett) MARADT "in progress"-ként — ez a beadás/QSL/elbírálás-alatti
-// státuszokkal együtt azt jelzi, hogy a folyamat még nem zárult le.
+// "Owned" indicator on the diploma list (per user request) — based on the
+// `submissions` schema's (schemas/submissions/submissions.js `decide` action)
+// state machine, `approved`/`paid`/`completed` ALL mean that the certificate has
+// actually been issued (the PDF has already been generated, downloadable):
+// `approved` is the FINAL STATE for free certificates (nothing to pay), `paid`
+// is the FINAL STATE for paid, PDF-only delivery — `completed` is created
+// EXCLUSIVELY for physically (printed/mailed) delivered certificates, when the
+// manager manually marks it "completed". So all three count as "OWNED",
+// NOT just `completed` — originally only `completed` was included here, but that
+// left out exactly the most common case (free/PDF-paid certificate),
+// see the user feedback. `awaiting_payment` (not yet paid) REMAINS "in progress" —
+// together with the submitted/QSL/under-review statuses, this indicates the
+// process hasn't concluded yet.
 const OWNED_STATUSES = ['approved', 'paid', 'completed'];
 const IN_PROGRESS_STATUSES = ['submitted', 'awaiting_qsl', 'pending_review', 'awaiting_payment'];
 
-// Statisztika-oldal (felhasználói kérésre): egy diplomát ténylegesen elnyertek
-// listája, régiónkénti (Hazai/EU/DX) összesítéssel a tetején, lapozható
-// hívójel-lista alatta.
+// Statistics page (per user request): a list of who actually earned a diploma,
+// with a summary at the top by region (Home/EU/DX), and a paginated
+// callsign list below.
 const STATS_PAGE_SIZE = 20;
 
 exports.install = function () {
@@ -57,13 +57,13 @@ async function view_list() {
 
     await attachManagerInfo(diplomas);
 
-    // Típus szerinti szűrés (?type=standard|challenge, query paraméter) — szűrés
-    // NÉLKÜL minden aktív diploma látszik. A szerver-oldali `MDB.find` szándékosan
-    // nem szűr rá közvetlenül a lekérdezésben, mert a meglévő (a `type` mező
-    // bevezetése előtti) diplomáknál a mező hiányzik -- itt, JS-ben egyszerűbb
-    // `d.type || 'standard'`-ként kezelni, mint egy Mongo `$or` feltétellel.
-    // Egyszerű, JS nélküli (link-alapú, oldal-újratöltős) szűrő, ugyanabban a
-    // szellemben, ahogy ez az oldal amúgy is teljesen szerver-oldalon renderelt.
+    // Filtering by type (?type=standard|challenge, query parameter) — WITHOUT
+    // filtering every active diploma is shown. The server-side `MDB.find` intentionally
+    // doesn't filter directly in the query, because existing diplomas (from before
+    // the `type` field was introduced) are missing the field -- here, in JS, it's simpler
+    // to treat it as `d.type || 'standard'` than with a Mongo `$or` condition.
+    // A simple, JS-free (link-based, page-reload) filter, in the same
+    // spirit as this page being fully server-side rendered anyway.
     let typeFilter = self.query.type === 'standard' || self.query.type === 'challenge' ? self.query.type : 'all';
 
     if (typeFilter !== 'all') {
@@ -72,15 +72,15 @@ async function view_list() {
 
     let ownedStatusById = self.user ? await loadOwnedStatuses(diplomas, self.user) : {};
 
-    // "Csak amit még nem nyertem el" szűrő (?unowned=1, felhasználói kérésre)
-    // — CSAK bejelentkezett usernél értelmezhető (az ownedStatus is csak akkor
-    // számolódik), ezért a checkbox/gomb is csak akkor jelenik meg a view-ban.
-    // Az "owned" (lásd OWNED_STATUSES fentebb) ÉS a lejárt (`stampType:
-    // 'expired'`, lásd buildListItem) kártyákat egyaránt rejti — utóbbit
-    // felhasználói kérésre: egy lejárt határidejű diplomát MÁR SOSE lehet
-    // megszerezni, tehát nem tartozik a "még megszerezhető" listába. Az
-    // `inprogress` (már beadva, de még nem elbírálva/kifizetve) állapotúak
-    // MARADNAK, mert azokat sem "nyerte még el".
+    // "Only what I haven't earned yet" filter (?unowned=1, per user request)
+    // — only makes sense for a logged-in user (ownedStatus is also only
+    // computed then), so the checkbox/button also only appears in the view then.
+    // It hides both "owned" (see OWNED_STATUSES above) AND expired (`stampType:
+    // 'expired'`, see buildListItem) cards — the latter per
+    // user request: a diploma with an expired deadline can NEVER
+    // be earned anymore, so it doesn't belong on the "still earnable" list. Items with
+    // `inprogress` status (already submitted, but not yet reviewed/paid)
+    // REMAIN, because those haven't been "earned yet" either.
     let unownedFilter = !!(self.user && self.query.unowned === '1');
 
     let listItems = diplomas.map(d => buildListItem(d, language, ownedStatusById[String(d._id)]));
@@ -129,11 +129,11 @@ async function view_detail(id) {
     self.repository.diploma = diploma;
     self.repository.hasImage = !!(diploma.blankImage && diploma.blankImage.watermarkedKey);
 
-    // A táblázat sor-fejlécei az admin szerkesztőből ismert, MÁR LÉTEZŐ resource
-    // kulcsokat használják (diplomas.deadline.*, diplomas.fee.*.label,
-    // diplomas.manager.*, diplomas.payment.*) — nincs értelme külön "public"
-    // duplikátumot felvenni ugyanahhoz a fogalomhoz, a view csak a nyers értéket
-    // teszi a kész fejléc mellé.
+    // The table row headers use the resource keys ALREADY known from the admin
+    // editor (diplomas.deadline.*, diplomas.fee.*.label,
+    // diplomas.manager.*, diplomas.payment.*) — there's no point adding a separate "public"
+    // duplicate for the same concept, the view just puts the raw value
+    // next to the ready-made header.
     self.repository.managerValue = diploma.managerInfo
         ? (diploma.managerInfo.callsign || diploma.managerInfo.email)
         : RESOURCE(language, 'diplomas.manager.none');
@@ -152,39 +152,39 @@ async function view_detail(id) {
 
     self.repository.paymentMethods = diploma.paymentMethods || [];
 
-    // A pontos mintavételezési darabszámot (qslSampleCount) szándékosan NEM
-    // áruljuk el a publikus oldalon — csak azt, hogy egyáltalán számíthat rá a
-    // jelentkező —, hogy ne lehessen "kijátszani" (pl. csak annyi QSL-t
-    // előkészíteni, ahányra biztosan számít).
+    // We intentionally do NOT reveal the exact sample count (qslSampleCount)
+    // on the public page — only that the applicant can be sampled at all —
+    // so that it can't be "gamed" (e.g. only preparing as many QSLs as
+    // they're sure to be asked for).
     self.repository.qslText = diploma.qslSampleCount > 0
         ? RESOURCE(language, 'diplomas.public.detail.qsl.text')
         : null;
 
     self.repository.duplicateText = RESOURCE(language, 'diplomas.duplicate.' + diploma.duplicatePolicy) || '';
 
-    // Csak akkor jelenik meg, ha a manager tényleg korlátozta a sávokat (üres
-    // lista = nincs korlátozás, nincs mit mondani) — lásd a schema `allowedBands`
-    // kommentjét: ez FÜGGETLEN attól, hogy van-e sávra pontozó matchRules szabály.
-    // Challenge típusnál a diploma-szintű `allowedBands` mindig üres (lásd save
-    // action), ott a `challenge.allowedBands` a mérvadó — ugyanaz a mondat-sablon
-    // jó rá, a forrás-tömb választása típusfüggő.
+    // Only shown if the manager actually restricted the bands (empty
+    // list = no restriction, nothing to say) — see the schema's `allowedBands`
+    // comment: this is INDEPENDENT of whether there's a matchRules rule scoring by band.
+    // For the challenge type, the diploma-level `allowedBands` is always empty (see the save
+    // action), there `challenge.allowedBands` is authoritative — the same sentence template
+    // works for it, only the source array selection is type-dependent.
     let allowedBands = diploma.type === 'challenge' ? ((diploma.challenge || {}).allowedBands || []) : (diploma.allowedBands || []);
     self.repository.allowedBandsText = allowedBands.length
         ? RESOURCE(language, 'diplomas.public.detail.allowedbands.text').replace('{0}', allowedBands.join(', '))
         : null;
 
-    // Adásmód-korlátozás jelenleg csak a challenge diploma-típusnál értelmezett
-    // (a standard típusnál erre a matchRules 'mode' mezője szolgál, ott nincs
-    // hozzá diploma-szintű, pontozástól független szűrő).
+    // Mode restriction is currently only interpreted for the challenge diploma type
+    // (for the standard type, the matchRules 'mode' field serves this, there's no
+    // diploma-level, scoring-independent filter for it there).
     self.repository.challengeAllowedModesText = diploma.type === 'challenge' && (diploma.challenge || {}).allowedModes && diploma.challenge.allowedModes.length
         ? RESOURCE(language, 'diplomas.public.detail.challenge.allowedmodes.text').replace('{0}', diploma.challenge.allowedModes.join(', '))
         : null;
 
-    // Csak akkor jelenítünk meg bármit, ha van érdemi közlendő: ha az átjátszó
-    // kifejezetten TILOS, vagy ha van rá külön (nullától eltérő) pontérték —
-    // a "megengedett, nincs külön szabály" alapállapotot (a diplomák többsége)
-    // szándékosan nem jelezzük ki, hogy ne legyen felesleges zaj a legtöbb
-    // diploma-oldalon.
+    // We only show anything if there's something meaningful to say: if the repeater
+    // is explicitly FORBIDDEN, or if there's a separate (non-zero) point value for it —
+    // we intentionally do not display the "allowed, no special rule" default state
+    // (the majority of diplomas), so there isn't unnecessary noise on most
+    // diploma pages.
     self.repository.repeaterText = diploma.repeaterAllowed === false
         ? RESOURCE(language, 'diplomas.public.detail.repeater.notallowed')
         : (diploma.repeaterPoints > 0
@@ -197,12 +197,12 @@ async function view_detail(id) {
 
     self.repository.rules = (diploma.matchRules || []).map(rule => describeMatchRule(rule, language, diploma.ruleMode));
 
-    // Challenge diploma (jelentkezés -> körönkénti sorsolás egy célpont-poolból,
-    // lásd schemas/diplomas/diplomas.js) -- a standard checklist/pontozás
-    // szabály-táblázatnak itt nincs értelme (matchRules mindig üres challenge
-    // típusnál), ezért egy külön, rövid összefoglaló jelenik meg helyette (lásd
-    // views/diplomas-public/detail.html). A tényleges jelentkezés még nem
-    // elérhető funkció -- ugyanaz a "hamarosan elérhető" CTA vonatkozik rá is.
+    // Challenge diploma (application -> per-round drawing from a target pool,
+    // see schemas/diplomas/diplomas.js) -- the standard checklist/points
+    // rule table doesn't make sense here (matchRules is always empty for the challenge
+    // type), so a separate, short summary is shown instead (see
+    // views/diplomas-public/detail.html). The actual application isn't
+    // an available feature yet -- the same "coming soon" CTA applies to it too.
     if (diploma.type === 'challenge') {
         let challenge = diploma.challenge || {};
         self.repository.challengeInfo = {
@@ -216,46 +216,48 @@ async function view_detail(id) {
         self.repository.challengeInfo = null;
     }
 
-    // A fokozatonkénti/kategóriánkénti körzet-küszöbök CSAK akkor relevánsak, ha
-    // a diploma használ fokozatokat (tiersEnabled) — egyébként a diploma-szintű
-    // sima zoneThresholds a mérvadó (csak pontozás módban értelmezett).
+    // The per-tier/per-category zone thresholds are ONLY relevant if
+    // the diploma uses tiers (tiersEnabled) — otherwise the diploma-level
+    // plain zoneThresholds is authoritative (only interpreted in points mode).
     self.repository.tiersEnabled = !!diploma.tiersEnabled;
     self.repository.categories = (diploma.categories || []).map(describeCategory);
 
     self.repository.showFlatZones = diploma.ruleMode === 'points' && !diploma.tiersEnabled;
     self.repository.zoneHomeLabel = RESOURCE(language, 'diplomas.zone.home') + (countryName ? ' (' + countryName + ')' : '');
 
-    // Szándékosan itt, a controllerben alakítjuk stringgé (nem a view-ban egy
-    // `@{... == null ? '' : ...}` ternary-vel) — a Total.js view-motor
-    // `view_is_assign()` helperje (node_modules/total4/internal.js) tévesen
-    // ÉRTÉKADÁSNAK érzékeli a `repository.xxx == ...` mintát (a `==`
-    // összehasonlítás első `=` karakterét nem tudja megkülönböztetni egy valódi
-    // `=` értékadástól), ezért egy ilyen `@{repository....== null ? a : b}`
-    // kifejezés MINDIG üres stringet renderel, a tényleges feltételtől
-    // függetlenül — ez okozta, hogy a körzet-küszöbök korábban nem jelentek meg
-    // (lásd a hívójel nélküli `s`/`c`/`q` loop-változós ternaryk máshol a
-    // kódbázisban, AZOK jól működnek, mert nem `repository`-val kezdődnek).
+    // We intentionally convert this to a string here, in the controller (not in the
+    // view with an `@{... == null ? '' : ...}` ternary) — the Total.js view engine's
+    // `view_is_assign()` helper (node_modules/total4/internal.js) mistakenly
+    // detects the `repository.xxx == ...` pattern as an ASSIGNMENT (it can't
+    // distinguish the `==` comparison's first `=` character from a real
+    // `=` assignment), so an expression like `@{repository....== null ? a : b}`
+    // ALWAYS renders an empty string, regardless of the actual condition —
+    // this is what caused the zone thresholds not to show up before
+    // (see the loop-variable-based `s`/`c`/`q` ternaries elsewhere in the
+    // codebase, WITHOUT a callsign — THOSE work fine, because they don't start with `repository`).
     let zoneThresholds = diploma.zoneThresholds || {};
     self.repository.zoneHomeValue = zoneThresholds.home == null ? '' : zoneThresholds.home;
     self.repository.zoneEuValue = zoneThresholds.eu == null ? '' : zoneThresholds.eu;
     self.repository.zoneDxValue = zoneThresholds.dx == null ? '' : zoneThresholds.dx;
 
-    // Beadás-CTA állapota (6. lépés, lásd controllers/submissions.js) — csak
-    // bejelentkezett usernél és STANDARD diplománál releváns (challenge típusnál
-    // marad a "hamarosan elérhető" szöveg, lásd a challengeInfo fenti kommentjét,
-    // mert a challenge saját jelentkezési folyamata még nincs megépítve).
-    if (self.user && diploma.type !== 'challenge') {
+    // Submission CTA state (step 6, or for challenge, the challenge-application
+    // runtime, see controllers/submissions.js) — relevant for both diploma
+    // types: resolveSubmitCtaState is type-independent (it only looks at the diploma-level
+    // determinism/deadline and the blocking submission), the view decides based on
+    // this whether to show a standard upload link or a
+    // challenge application button on the "submit" branch.
+    if (self.user) {
         self.repository.ctaState = await resolveSubmitCtaState(diploma, self.user);
     }
 
     self.view('detail');
 }
 
-// Statisztika-oldal: kik szerezték meg ténylegesen ezt a diplomát (lásd
-// OWNED_STATUSES). Régiónkénti (Hazai/EU/DX) összesítés a TELJES (nem
-// lapozott) állományból, alatta a hívójel-lista lapozva (`?page=N`,
-// SZÁNDÉKOSAN nem JS-es/fetch-es admin-mintájú lapozás, mert ez az oldal is
-// szerver-oldalon renderelt, mint a többi diplomas-public route).
+// Statistics page: who has actually earned this diploma (see
+// OWNED_STATUSES). Per-region (Home/EU/DX) summary from the FULL (not
+// paginated) dataset, with the paginated callsign list below (`?page=N`,
+// INTENTIONALLY not the JS/fetch-based admin-style pagination, because this page is also
+// server-side rendered, like the other diplomas-public routes).
 async function view_stats(id) {
     let self = this;
     let language = self.language;
@@ -276,13 +278,13 @@ async function view_stats(id) {
     let page = Number(self.query.page) || 0;
     let max = STATS_PAGE_SIZE;
 
-    // A régiónkénti összesítéshez a TELJES (nem lapozott) állomány kell —
-    // ehhez elég a userId, a zóna az applikáns JELENLEGI országa alapján, ÉLŐBEN
-    // számolva (lásd classifyZone lent), NEM a beadáskor eltárolt
-    // `autoCheckDetails.zone`-ból: utóbbi csak `ruleMode:'points'` diplománál
-    // létezik egyáltalán (lásd modules/rule-engine.js evaluateChecklist-je,
-    // ami NEM ír zónát), így checklist-módú diplománál is tudunk régiónkénti
-    // bontást mutatni ezzel a megoldással.
+    // The FULL (not paginated) dataset is needed for the per-region summary —
+    // for this, userId is enough, the zone is computed LIVE based on the applicant's
+    // CURRENT country (see classifyZone below), NOT from the stored
+    // `autoCheckDetails.zone` at submission time: the latter only exists at all for
+    // `ruleMode:'points'` diplomas (see modules/rule-engine.js's evaluateChecklist,
+    // which does NOT write a zone), so with this solution we can also show a
+    // per-region breakdown for checklist-mode diplomas.
     let allOwned = await MDB.find(process.env.MONGODB_DB_NAME, 'submissions', {
         diplomaId: id,
         status: { $in: OWNED_STATUSES }
@@ -324,12 +326,12 @@ async function view_stats(id) {
     self.view('stats');
 }
 
-// Egy ország kódot Hazai/EU/DX-be sorol a diploma `homeCountry`-jához képest
-// — ÉLŐ (a user JELENLEGI `country` mezője alapján) osztályozás, szándékosan
-// KÜLÖN másolat a modules/rule-engine.js `determineZone()`-jától (az ottani
-// modul-privát, nem exportált, ÉS a beadáskori, FAGYASZTOTT országot
-// osztályozza — itt a mindenkori, aktuális besorolás kell egy statisztikai
-// összesítéshez, ez a két cél szándékosan eltér).
+// Classifies a country code into Home/EU/DX relative to the diploma's `homeCountry`
+// — a LIVE classification (based on the user's CURRENT `country` field), intentionally
+// a SEPARATE copy of modules/rule-engine.js's `determineZone()` (that one is
+// module-private, not exported, AND classifies the FROZEN country at
+// submission time — here the current, up-to-date classification is needed for a
+// statistical summary, these two purposes intentionally differ).
 function classifyZone(applicantCountry, homeCountry) {
     let country = String(applicantCountry || '').toUpperCase();
     let home = String(homeCountry || '').toUpperCase();
@@ -340,10 +342,10 @@ function classifyZone(applicantCountry, homeCountry) {
     return COUNTRIES.isEU(country) ? 'eu' : 'dx';
 }
 
-// A statisztika-oldal tetején lévő Hazai/EU/DX összesítést adja vissza — egy
-// batch `$in`-lekérdezéssel oldja fel az érintett userId-kat országra, majd
-// JS-ben tálalja (nincs itt szükség Mongo aggregation pipeline-ra, a
-// darabszám ritkán haladja meg a néhány százat egy diplománként).
+// Returns the Home/EU/DX summary at the top of the statistics page — resolves
+// the involved userIds to countries with a single batch `$in` query, then
+// tallies it in JS (no need for a Mongo aggregation pipeline here, the
+// count rarely exceeds a few hundred per diploma).
 async function countByZone(submissions, homeCountry) {
     let counts = { home: 0, eu: 0, dx: 0 };
 
@@ -371,10 +373,10 @@ async function countByZone(submissions, homeCountry) {
     return counts;
 }
 
-// A lapozott lista aktuális oldalához tartozó beadványokra rápakolja az
-// applikáns hívójelét/országát — ugyanaz a batch `$in`-join minta, mint a
-// controllers/submissions.js attachApplicantInfo()-ja (szándékosan külön
-// másolat, lásd az attachManagerInfo() fenti kommentjét ugyanerről).
+// Attaches the applicant's callsign/country to the submissions belonging to the
+// paginated list's current page — the same batch `$in` join pattern as
+// controllers/submissions.js's attachApplicantInfo() (intentionally a separate
+// copy, see attachManagerInfo()'s comment above about the same thing).
 async function attachApplicantInfo(submissions) {
     let ids = submissions.map(s => s.userId).filter(id => id);
 
@@ -398,13 +400,13 @@ async function attachApplicantInfo(submissions) {
     }
 }
 
-// Egy statisztika-lista-sor megjelenítésre kész alakja. A pontszám a VÉGLEGES
-// (esetleges kézi korrekció utáni) `submission.totalPoints`, DE a
-// kategória/fokozat-címke ugyanabból a beadáskori `autoCheckDetails.categories`
-// pillanatképből jön, mint a ténylegesen kiadott bizonyítványé (lásd
-// schemas/submissions/submissions.js buildCertificateFieldValues()) — ez
-// SZÁNDÉKOS: a statisztika a ténylegesen NYOMTATOTT fokozatot mutassa, ne egy
-// utólag, a korrigált pontszámból újraszámolt (attól esetleg eltérő) értéket.
+// The display-ready form of a statistics list row. The score is the FINAL
+// (after any possible manual correction) `submission.totalPoints`, BUT the
+// category/tier label comes from the same `autoCheckDetails.categories`
+// snapshot taken at submission time as the actually issued certificate's (see
+// schemas/submissions/submissions.js buildCertificateFieldValues()) — this is
+// INTENTIONAL: the statistics should show the tier that was actually PRINTED, not a
+// value recalculated afterwards from the corrected score (which might differ from it).
 function buildStatsRow(submission, diploma, language) {
     let applicant = submission.applicant;
     let zone = classifyZone(applicant && applicant.country, diploma.homeCountry);
@@ -434,11 +436,11 @@ function buildStatsRow(submission, diploma, language) {
     return row;
 }
 
-// Lásd a fenti komment — visszaadja, hogy a "Jelentkezés" szekció melyik ágát
-// mutassa a view: 'expired' (lejárt határidő), 'existing' (már van blokkoló
-// beadványa, lásd controllers/submissions.js NON_BLOCKING_STATUSES-ét — ez a
-// szabály itt szándékosan duplikálva, hogy a publikus oldal is konzisztensen
-// jelezze), vagy 'submit' (megjelenhet a beadás-gomb).
+// See the comment above — returns which branch of the "Application" section
+// the view should show: 'expired' (deadline passed), 'existing' (already has a blocking
+// submission, see controllers/submissions.js's NON_BLOCKING_STATUSES — this
+// rule is intentionally duplicated here, so the public page also consistently
+// reflects it), or 'submit' (the submit button can appear).
 async function resolveSubmitCtaState(diploma, user) {
     if (diploma.deadlineType === 'deadline' && diploma.deadlineDate && new Date(diploma.deadlineDate) < new Date())
         return { type: 'expired' };
@@ -455,11 +457,11 @@ async function resolveSubmitCtaState(diploma, user) {
     return { type: 'submit' };
 }
 
-// A típus- és "meg nem szerzett"-szűrő gombjainak/linkjeinek URL-jét építi fel
-// — mindkét szűrő EGYSZERRE, egymást megtartva legyen kombinálható (pl. a
-// típus-gombra kattintva a "csak meg nem szerzett" pipa NE vesszen el, és
-// fordítva), ugyanabban a JS nélküli, link-alapú szellemben, mint az eddigi
-// típus-szűrő.
+// Builds the URL for the type- and "not-yet-earned"-filter buttons/links
+// — both filters should be combinable SIMULTANEOUSLY, preserving each other (e.g.
+// clicking the type button should NOT lose the "only not-yet-earned" checkbox, and
+// vice versa), in the same JS-free, link-based spirit as the
+// existing type filter.
 function buildListUrl(type, unowned) {
     let params = [];
 
@@ -476,11 +478,11 @@ function isDbError(result) {
     return Array.isArray(result) && result[0] != null && result[0].error != null;
 }
 
-// Ugyanaz a feloldás, mint schemas/diplomas/diplomas.js attachManagerInfo-ja —
-// szándékosan külön másolat (nem export/require a schema-ból), mert a schema
-// fájl NEWSCHEMA-regisztrációt futtat betöltéskor, amit controller-ből nem
-// akarunk újra kiváltani; ez a pár soros duplikáció olcsóbb, mint egy közös
-// modulba kiszervezni egy ilyen kis segédfüggvényt.
+// The same resolution as schemas/diplomas/diplomas.js's attachManagerInfo —
+// intentionally a separate copy (not exported/required from the schema), because the
+// schema file runs a NEWSCHEMA registration on load, which we don't want to
+// trigger again from a controller; this few-lines-long duplication is cheaper than
+// extracting such a small helper function into a shared module.
 async function attachManagerInfo(diplomas) {
     let ids = diplomas.map(d => d.managerId).filter(id => id);
 
@@ -505,13 +507,13 @@ async function attachManagerInfo(diplomas) {
     }
 }
 
-// A bejelentkezett user "megvan"/"elbírálás alatt" jelzését adja vissza
-// diplomaId -> 'owned'|'inprogress' térképként, egy lekérdezésből a lista
-// összes diplomájára (nem diplománként külön, lásd resolveSubmitCtaState-et
-// a detail nézetben, ami egyetlen diplomára fut, ott nem kellett batch-elni).
-// Ha egy usernek több beadványa is van ugyanarra a diplomára (pl. korábban
-// elutasítva, majd újra beadva), az OWNED_STATUSES mindig felülírja az
-// `inprogress`-t — a végeredmény számít, nem a beadás sorrendje.
+// Returns the logged-in user's "owned"/"under review" indicator as a
+// diplomaId -> 'owned'|'inprogress' map, from a single query for all
+// diplomas in the list (not per-diploma separately, see resolveSubmitCtaState
+// in the detail view, which runs for a single diploma, so batching wasn't needed there).
+// If a user has multiple submissions for the same diploma (e.g. previously
+// rejected, then resubmitted), OWNED_STATUSES always overrides
+// `inprogress` — the end result matters, not the submission order.
 async function loadOwnedStatuses(diplomas, user) {
     let ids = diplomas.map(d => String(d._id));
 
@@ -553,14 +555,14 @@ function buildListItem(d, language, ownedStatus) {
 
     let isExpired = d.deadlineType === 'deadline' && d.deadlineDate && new Date(d.deadlineDate) < new Date();
 
-    // "Pecsét" a kártya/előnézeti kép fölött (felhasználói kérésre, az eredeti
-    // opacity-alapú halványítás helyett, mert az "nem volt elég hangsúlyos"):
-    // zöld, ha az oklevél ténylegesen megvan (lásd OWNED_STATUSES), piros, ha
-    // a jelentkezési határidő lejárt (ÉS még nincs meg — egy megszerzett
-    // oklevél a zöld pecsétet kapja akkor is, ha a diploma határideje azóta
-    // lejárt, hisz azt már nem lehet/kell újra megszerezni). A lejárt-de-meg-
-    // nem-szerzett esetben SZÁNDÉKOSAN nincs "Megvan" cimke — csak a pecsét
-    // jelzi vizuálisan, hogy ez a diploma "lezárva".
+    // "Stamp" over the card/preview image (per user request, replacing the original
+    // opacity-based dimming, because that "wasn't emphatic enough"):
+    // green if the certificate is actually owned (see OWNED_STATUSES), red if
+    // the application deadline has expired (AND it's not yet owned — an earned
+    // certificate gets the green stamp even if the diploma's deadline has since
+    // passed, since it no longer can/needs to be earned again). In the expired-but-not-
+    // earned case there is INTENTIONALLY no "Owned" label — only the stamp
+    // visually indicates that this diploma is "closed".
     let stampType = ownedStatus === 'owned' ? 'owned' : (isExpired ? 'expired' : null);
     let stampLabel = stampType ? RESOURCE(language, 'diplomas.public.list.stamp.' + stampType) : null;
 
@@ -570,10 +572,10 @@ function buildListItem(d, language, ownedStatus) {
         isChallenge: d.type === 'challenge',
         hasImage: !!(d.blankImage && d.blankImage.watermarkedKey),
         deadlineText: deadlineText,
-        // Csak rendezéshez (lásd compareListItems lent) — a "hamarosan lejár"
-        // sorrend a MÉG le nem járt, konkrét határidejű diplomákat a
-        // legközelebbi határidő szerint növekvő sorrendbe teszi; `null`, ha
-        // folyamatos (nincs határidő) vagy már lejárt.
+        // Only for sorting (see compareListItems below) — the "expiring soon"
+        // order puts diplomas with a concrete deadline that HASN'T yet passed
+        // in ascending order by the nearest deadline; `null` if
+        // continuous (no deadline) or already expired.
         deadlineTimestamp: (d.deadlineType === 'deadline' && d.deadlineDate && !isExpired) ? new Date(d.deadlineDate).getTime() : null,
         feeText: feeText,
         managerText: managerText,
@@ -583,14 +585,14 @@ function buildListItem(d, language, ownedStatus) {
     };
 }
 
-// Felhasználói kérésre bevezetett listasorrend: elöl a "hamarosan lejáró"
-// (még megszerezhető, konkrét határidejű) diplomák, a legközelebbi határidő
-// szerint növekvő sorrendben; utánuk a folyamatos (határidő nélküli, még meg
-// nem szerzett/nem lejárt) diplomák; utánuk a már beadott/elbírálás-alatti
-// ("folyamatban") beadványok diplomái; végül a már megszerzett diplomák — a
-// lejárt-de-meg-nem-szerzett ("halott", soha nem lesz belőle semmi) diplomák
-// kerülnek legutolsóra. Azonos "rank"-on belül az eredeti (feltöltés dátuma
-// szerinti) sorrend marad (Array.prototype.sort stabil Node.js-ben).
+// List order introduced per user request: first the "expiring soon"
+// (still earnable, with a concrete deadline) diplomas, in ascending order by
+// nearest deadline; then the continuous (no deadline, still not
+// earned/not expired) diplomas; then the diplomas of already submitted/under-review
+// ("in progress") submissions; finally the already earned diplomas — the
+// expired-but-not-earned ("dead", never going to become anything) diplomas
+// go last. Within the same "rank", the original (upload date)
+// order is kept (Array.prototype.sort is stable in Node.js).
 function listItemRank(item) {
     if (item.ownedStatus === 'owned')
         return 3;
@@ -616,11 +618,11 @@ function compareListItems(a, b) {
     return aDeadline - bDeadline;
 }
 
-// Egy matchRules-sor emberi nyelvű leírását állítja elő. Ha a manager adott
-// meg szabad szöveges "Megnevezés"-t (rule.label), az az elsődleges — ez pont
-// erre a célra, a publikus megjelenítésre való (lásd diplomas.rule.label
-// admin súgó-szövegét). Ha nincs, egy generikus, mező+feltétel alapú mondatot
-// generálunk a resource-fájlok sablonjaiból ({field}/{value} helyettesítéssel).
+// Produces a human-language description of a matchRules row. If the manager
+// specified a free-text "Label" (rule.label), that takes priority — it exists
+// exactly for this purpose, the public display (see the admin help text for
+// diplomas.rule.label). If not, a generic, field+condition-based sentence is
+// generated from the resource files' templates ({field}/{value} substitution).
 function describeMatchRule(rule, language, ruleMode) {
     let fieldLabel = RESOURCE(language, 'diplomas.rule.field.' + rule.field) || rule.field;
     let valueText = Array.isArray(rule.value) ? rule.value.join(', ') : String(rule.value);
@@ -646,8 +648,8 @@ function describeMatchRule(rule, language, ruleMode) {
     };
 }
 
-// Egy kategória (pl. "CW") fokozat-létráját (Bronz/Ezüst/Arany, körzetenkénti
-// minimum ponttal) alakítja megjelenítésre kész formára.
+// Converts a category's (e.g. "CW") tier ladder (Bronze/Silver/Gold, with a
+// per-region minimum score) into display-ready form.
 function describeCategory(category) {
     return {
         label: category.label,

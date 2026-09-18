@@ -1,38 +1,41 @@
-// adif-parser.js — saját minimál ADIF (.adi/.adif) napló-parser (CLAUDE.md
-// minimális dependencia elve: nem veszünk fel npm csomagot egy ilyen kis,
-// jól körülhatárolt feladatra).
+// adif-parser.js — our own minimal ADIF (.adi/.adif) log parser (CLAUDE.md's
+// minimal-dependency principle: we don't add an npm package for such a small,
+// well-scoped task).
 //
-// ADIF formátum: `<FIELDNAME:LENGTH[:TYPE]>value` tag-ek egymás után, egy
-// rekord (QSO) végét a `<eor>` tag jelzi (case-insensitive), a fájl elején
-// opcionálisan egy fejléc áll (a `<eoh>` tag-ig, ha egyáltalán van — sok
-// egyszerű napló fejléc nélkül, közvetlenül QSO-kkal kezdődik). A LENGTH a
-// value karakterhossza — ASCII/latin naplóknál ez megegyezik a substring
-// hosszával, ez a leegyszerűsítés (nem bájt-pontos UTF-8 hossz) a "minimál
-// parser" szándékos korlátja, ugyanúgy, ahogy pl. a modules/adif-modes.js is
-// csak a gyakori eseteket fedi le teljes ADIF-enumeráció helyett.
+// ADIF format: a sequence of `<FIELDNAME:LENGTH[:TYPE]>value` tags, the end
+// of a record (QSO) is marked by the `<eor>` tag (case-insensitive), the
+// start of the file optionally has a header (up to the `<eoh>` tag, if there
+// is one at all — many simple logs have no header and start directly with
+// QSOs). LENGTH is the value's character length — for ASCII/Latin logs this
+// matches the substring's length; this simplification (not a byte-accurate
+// UTF-8 length) is an intentional limitation of the "minimal parser", the
+// same way e.g. modules/adif-modes.js only covers the common cases instead
+// of a full ADIF enumeration.
 //
-// A rule-engine (lásd modules/rule-engine.js) ezt a modult használja a
-// beadott napló QSO-kra bontásához, mielőtt a diploma matchRules-eit
-// kiértékelné rajtuk.
+// The rule engine (see modules/rule-engine.js) uses this module to split the
+// submitted log into QSOs, before evaluating the diploma's matchRules
+// against them.
 global.ADIF_PARSER = {};
 
 const TAG_RE = /<([a-zA-Z_][a-zA-Z0-9_]*):(\d+)(:[^>]*)?>/g;
 
-// text: a feltöltött .adi/.adif fájl tartalma (string). Visszaad egy QSO-tömböt
-// (eredeti, a fájlban szereplő sorrendben) — minden elem a nyers ADIF mezőket
-// NAGYBETŰS kulcsokkal tartalmazza (`raw`), plusz a rule-engine-nek kényelmes,
-// normalizált mezőket: `call` (upper), `band` (lower), `mode` (upper),
-// `comment`, `qth`, `propMode` (upper, PROP_MODE-ból — lásd rule-engine.js
-// komment az átjátszó-detektálásról), `qsoDate` (Date, QSO_DATE+TIME_ON-ból,
-// hiányzó/hibás bemenetnél `null`). Parse-olhatatlan/üres bemenetnél üres
-// tömböt ad vissza — nem dob kivételt, a hívó (controller) dönti el, hogy 0
-// QSO hibának számít-e (lásd error.submission.file.empty).
+// text: the content of the uploaded .adi/.adif file (string). Returns an
+// array of QSOs (in the original order they appear in the file) — each
+// element contains the raw ADIF fields with UPPERCASE keys (`raw`), plus
+// normalized fields convenient for the rule engine: `call` (upper), `band`
+// (lower), `mode` (upper), `comment`, `qth`, `propMode` (upper, from
+// PROP_MODE — see the rule-engine.js comment about repeater detection),
+// `qsoDate` (Date, from QSO_DATE+TIME_ON, `null` for missing/invalid input).
+// Returns an empty array for unparseable/empty input — doesn't throw an
+// exception, the caller (controller) decides whether 0 QSOs counts as an
+// error (see error.submission.file.empty).
 ADIF_PARSER.parse = function (text) {
     if (!text || typeof text !== 'string')
         return [];
 
-    // A fejléc (ha van) a <eoh> tag-ig tart — utána kezdődnek a QSO-rekordok.
-    // Case-insensitive keresés, mert az ADIF tag-nevek nem kis/nagybetű-érzékenyek.
+    // The header (if present) extends up to the <eoh> tag — the QSO records
+    // start after that. Case-insensitive search, because ADIF tag names are
+    // not case-sensitive.
     let eohIndex = text.search(/<eoh>/i);
     let body = eohIndex === -1 ? text : text.slice(eohIndex + 5);
 
@@ -42,8 +45,8 @@ ADIF_PARSER.parse = function (text) {
     for (let i = 0, n = records.length; i < n; i++) {
         let record = parseRecord(records[i]);
 
-        // Üres/csak whitespace rekordot (pl. az utolsó <eor> utáni maradék)
-        // átugorjuk — nem egy valódi QSO.
+        // Skip an empty/whitespace-only record (e.g. the remainder after the
+        // last <eor>) — it's not a real QSO.
         if (!record)
             continue;
 
@@ -69,9 +72,10 @@ function parseRecord(chunk) {
         raw[name] = value;
         found = true;
 
-        // A regex `lastIndex`-ét a beolvasott érték után kell folytatni, nem a
-        // tag-utáni pozíción (ami csak a `>` után van, a value előtt) — a
-        // `exec` a saját `lastIndex`-éből indul legközelebb, ezt kell átállítani.
+        // The regex's `lastIndex` must continue after the value that was read,
+        // not at the position right after the tag (which is only after the
+        // `>`, before the value) — `exec` starts from its own `lastIndex` next
+        // time, so this needs to be adjusted.
         TAG_RE.lastIndex = start + length;
     }
 
@@ -90,10 +94,10 @@ function parseRecord(chunk) {
     };
 }
 
-// QSO_DATE: "YYYYMMDD", TIME_ON: "HHMM" vagy "HHMMSS" — mindkettő ADIF-konvenció
-// szerinti, fix hosszú számjegy-string. Hiányzó/hibás bemenetnél `null` (a
-// rule-engine duplikátum-kronológiája ilyenkor az eredeti napló-sorrendre esik
-// vissza, lásd ott).
+// QSO_DATE: "YYYYMMDD", TIME_ON: "HHMM" or "HHMMSS" — both fixed-length digit
+// strings per ADIF convention. `null` for missing/invalid input (in that
+// case the rule engine's duplicate chronology falls back to the original log
+// order, see there).
 function parseQsoDate(dateStr, timeStr) {
     if (!dateStr || dateStr.length !== 8)
         return null;

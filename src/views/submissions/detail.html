@@ -14,9 +14,16 @@
 	<table class="table is-fullwidth">
 		<tbody>
 			<tr><th>@(#submissions.detail.status.label)</th><td><span class="tag @{repository.submission.statusClass}">@{repository.submission.statusLabel}</span></td></tr>
+			@{if repository.submission.diplomaInfo && repository.submission.diplomaInfo.type == 'challenge'}
+			<tr><th>@(#submissions.detail.challenge.round.label)</th><td>@{repository.submission.challengeRoundText}</td></tr>
+			@{if repository.submission.status == 'challenge_in_progress' || repository.submission.status == 'awaiting_qsl'}
+			<tr><th>@(#submissions.detail.challenge.deadline.label)</th><td>@{repository.submission.currentRound.deadlineAtText || '—'}</td></tr>
+			@{fi}
+			@{else}
 			<tr><th>@(#submissions.detail.parsed.label)</th><td>@{repository.submission.parsedQsoCount}</td></tr>
 			<tr><th>@(#submissions.detail.matched.label)</th><td>@{repository.submission.matchedQsoCount}</td></tr>
 			<tr><th>@(#submissions.detail.points.label)</th><td>@{repository.submission.totalPoints}</td></tr>
+			@{fi}
 			<tr><th>@(#submissions.detail.delivery.label)</th><td>@{repository.submission.deliveryLabel}</td></tr>
 			@{if repository.submission.serialNumber}
 			<tr><th>@(#submissions.detail.serial.label)</th><td>@{repository.submission.serialNumber}</td></tr>
@@ -128,6 +135,159 @@
 	</div>
 	@{fi}
 
+	@{if repository.submission.diplomaInfo && repository.submission.diplomaInfo.type == 'challenge'}
+
+	@{if repository.submission.status == 'rejected_auto' && repository.submission.failureReason == 'round_deadline'}
+	<div class="notification is-danger is-light mt-4">
+		<p>@{repository.deadlineMissedText}</p>
+	</div>
+	@{fi}
+
+	<h2 class="title is-5 mt-4">@(#submissions.detail.challenge.rounds.title)</h2>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#submissions.detail.challenge.round.col.number)</th>
+				<th>@(#submissions.detail.challenge.round.col.status)</th>
+				<th>@(#submissions.detail.challenge.round.col.deadline)</th>
+				<th>@(#submissions.detail.challenge.round.col.targets)</th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach r in repository.submission.rounds}
+			<tr>
+				<td>@{r.roundNumber}</td>
+				<td><span class="tag">@{r.statusLabel}</span></td>
+				<td>@{r.deadlineAtText || '—'}</td>
+				<td>
+					@{foreach t in r.targets}
+					<span class="tag mr-1@{if t.matched} is-success@{else} is-light@{fi}" title='@{t.value}'>
+						@{t.label || t.value}
+					</span>
+					@{end}
+				</td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+
+	@{if repository.isOwner && repository.submission.currentRound.lastLogBreakdown && repository.submission.currentRound.lastLogBreakdown.length}
+	<h2 class="title is-6 mt-4">@(#submissions.detail.challenge.log.result.title)</h2>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped is-size-7">
+		<thead>
+			<tr>
+				<th>@(#submissions.detail.challenge.log.result.col.call)</th>
+				<th>@(#submissions.detail.challenge.log.result.col.band)</th>
+				<th>@(#submissions.detail.challenge.log.result.col.mode)</th>
+				<th>@(#submissions.detail.challenge.log.result.col.comment)</th>
+				<th>@(#submissions.detail.challenge.log.result.col.result)</th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach e in repository.submission.currentRound.lastLogBreakdown}
+			<tr>
+				<td>@{e.call}</td>
+				<td>@{e.band}</td>
+				<td>@{e.mode}</td>
+				<td>@{e.comment}</td>
+				<td>
+					@{if e.reasonText}
+					<span class="tag is-danger is-light">@{e.reasonText}</span>
+					@{else}
+					<span class="tag is-success is-light">@{e.matchedText}</span>
+					@{fi}
+				</td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{fi}
+
+	@{if repository.isOwner && repository.submission.status == 'challenge_in_progress' && repository.submission.currentRound.status == 'awaiting_log'}
+	<hr>
+	<h2 class="title is-5">@(#submissions.detail.challenge.log.title)</h2>
+	<p class="is-size-7 has-text-grey mb-2">@{repository.submission.currentRound.matchedCount}/@{repository.submission.currentRound.targetCount} @(#submissions.detail.challenge.log.progress)</p>
+	<form method="post" enctype="multipart/form-data" action="/upload/submissions/@{repository.submission._id}/challenge/@{repository.submission.currentRound.roundNumber}/log">
+		<div class="file has-name mb-2">
+			<label class="file-label">
+				<input class="file-input" type="file" id="input_challenge_log_file" name="file" accept=".adi,.adif,text/plain" required>
+				<span class="file-cta">
+					<span class="file-icon"><i class="fas fa-upload"></i></span>
+					<span class="file-label">@(#submissions.detail.challenge.log.choose)</span>
+				</span>
+				<span class="file-name" id="challenge_log_file_name">—</span>
+			</label>
+		</div>
+		<button type="submit" class="button is-primary">@(#submissions.detail.challenge.log.upload.button)</button>
+	</form>
+	@{fi}
+
+	@{if repository.submission.status == 'awaiting_qsl'}
+	<hr>
+	<h2 class="title is-5">@(#submissions.detail.challenge.qsl.title)</h2>
+	<p class="is-size-7 has-text-grey">@(#submissions.detail.qsl.intro)</p>
+	<p class="is-size-7 mb-1">
+		<strong>@(#submissions.detail.qsl.types.label)</strong>
+		@{if repository.qslTypesAllowed.indexOf('lotw') !== -1}<span class="tag mr-1">@(#qsl.type.lotw)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('eqsl') !== -1}<span class="tag mr-1">@(#qsl.type.eqsl)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('qrz') !== -1}<span class="tag mr-1">@(#qsl.type.qrz)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('clublog') !== -1}<span class="tag mr-1">@(#qsl.type.clublog)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('hrdlog') !== -1}<span class="tag mr-1">@(#qsl.type.hrdlog)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('email') !== -1}<span class="tag mr-1">@(#qsl.type.email)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('paper') !== -1}<span class="tag mr-1">@(#qsl.type.paper)</span>@{fi}
+	</p>
+	<p class="is-size-7 has-text-grey mb-3">@(#submissions.detail.qsl.types.hint)</p>
+	<div class="table-container">
+	<table class="table is-fullwidth is-striped">
+		<thead>
+			<tr>
+				<th>@(#submissions.detail.qsl.col.call)</th>
+				<th>@(#submissions.detail.qsl.col.image)</th>
+			</tr>
+		</thead>
+		<tbody>
+			@{foreach q in repository.submission.currentRound.qslRequests}
+			<tr>
+				<td>@{q.call}</td>
+				<td>
+					@{if q.uploaded}
+					<a href="@{q.imageUrl}" target="_blank"><i class="fas fa-image"></i> @(#submissions.detail.qsl.uploaded)</a>
+					@{else if repository.isOwner}
+					<form method="post" enctype="multipart/form-data" action="/upload/submissions/@{repository.submission._id}/challenge/@{repository.submission.currentRound.roundNumber}/qsl/@{q.qsoRef}" class="is-inline-flex is-align-items-center">
+						<div class="file is-small has-name">
+							<label class="file-label">
+								<input class="file-input challenge-qsl-file-input" type="file" name="file" accept="image/*,.pdf" required>
+								<span class="file-cta">
+									<span class="file-icon"><i class="fas fa-upload"></i></span>
+									<span class="file-label">@(#submissions.detail.qsl.choose)</span>
+								</span>
+								<span class="file-name challenge-qsl-file-name">—</span>
+							</label>
+						</div>
+						<button type="submit" class="button is-small is-primary ml-2">@(#submissions.detail.qsl.upload.button)</button>
+					</form>
+					@{else}
+					—
+					@{fi}
+				</td>
+			</tr>
+			@{end}
+		</tbody>
+	</table>
+	</div>
+	@{fi}
+
+	@{if repository.isOwner && (repository.submission.status == 'challenge_in_progress' || repository.submission.status == 'awaiting_qsl')}
+	@{import('frontendhelper.js + common.js')}
+	@{import('pages/submissions-detail/01_challenge.js')}
+	@{fi}
+
+	@{else}
+
 	@{if repository.submission.autoCheckDetails.mode == 'checklist'}
 	<h2 class="title is-5 mt-4">@(#submissions.detail.checklist.title)</h2>
 	<div class="table-container">
@@ -177,6 +337,19 @@
 	@{if repository.submission.qslRequests && repository.submission.qslRequests.length}
 	<h2 class="title is-5 mt-4">@(#submissions.detail.qsl.title)</h2>
 	<p class="is-size-7 has-text-grey">@(#submissions.detail.qsl.intro)</p>
+
+	<p class="is-size-7 mb-1">
+		<strong>@(#submissions.detail.qsl.types.label)</strong>
+		@{if repository.qslTypesAllowed.indexOf('lotw') !== -1}<span class="tag mr-1">@(#qsl.type.lotw)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('eqsl') !== -1}<span class="tag mr-1">@(#qsl.type.eqsl)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('qrz') !== -1}<span class="tag mr-1">@(#qsl.type.qrz)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('clublog') !== -1}<span class="tag mr-1">@(#qsl.type.clublog)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('hrdlog') !== -1}<span class="tag mr-1">@(#qsl.type.hrdlog)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('email') !== -1}<span class="tag mr-1">@(#qsl.type.email)</span>@{fi}
+		@{if repository.qslTypesAllowed.indexOf('paper') !== -1}<span class="tag mr-1">@(#qsl.type.paper)</span>@{fi}
+	</p>
+	<p class="is-size-7 has-text-grey mb-3">@(#submissions.detail.qsl.types.hint)</p>
+
 	<div class="table-container">
 	<table class="table is-fullwidth is-striped">
 		<thead>
@@ -301,12 +474,15 @@
 	</table>
 	</div>
 
+	@{fi}
+
 	@{if repository.isReviewer && repository.submission.status == 'pending_review'}
 	<hr>
 	<h2 class="title is-5">@(#submissions.detail.review.title)</h2>
 
 	<div class="notification is-danger is-light is-hidden" id="notification_review_error"></div>
 
+	@{if !repository.submission.diplomaInfo || repository.submission.diplomaInfo.type != 'challenge'}
 	<p class="is-size-7 has-text-grey mb-2">@(#submissions.detail.review.points.label)</p>
 	<form id="form_points" class="field has-addons mb-4">
 		<div class="control">
@@ -319,6 +495,7 @@
 			<button type="submit" class="button" id="button_points_submit">@(#submissions.detail.review.points.submit)</button>
 		</div>
 	</form>
+	@{fi}
 
 	<div class="field">
 		<div class="control">

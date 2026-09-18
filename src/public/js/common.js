@@ -1,6 +1,6 @@
-// common.js — közös frontend logika (lapozás, menü, tab-kezelés).
-// A technológiai mintaprojekt (EHS4) common.js-éből átemelve, HDP-specifikus
-// átnevezésekkel (localStorage kulcs stb.).
+// common.js — shared frontend logic (pagination, menu, tab handling).
+// Carried over from the technology reference project's (EHS4) common.js, with
+// HDP-specific renames (localStorage key, etc.).
 
 setActiveMenuItem();
 
@@ -12,7 +12,7 @@ function setActiveMenuItem() {
     }
 }
 
-// ---- Lapméret: hány elem jelenjen meg egy oldalon ----
+// ---- Page size: how many items to show per page ----
 const PAGE_SIZE_VALUES = [25, 50, 100];
 const PAGE_SIZE_DEFAULT = 25;
 const PAGE_SIZE_STORAGE_KEY = 'hdp_page_size';
@@ -24,14 +24,14 @@ function getPageSize() {
             return stored;
         }
     } catch (e) {
-        // local storage nem elérhető
+        // local storage not available
     }
     return PAGE_SIZE_DEFAULT;
 }
 
-// Egy lapméret-választó <select> feltöltése a fix értékekkel és bekötése.
-// el: elem vagy id; onChange(size): a mentés után fut le.
-// Az oldalon lévő összes .page-size-select szinkronban marad.
+// Fills a page-size-selector <select> with the fixed values and binds it.
+// el: element or id; onChange(size): runs after saving.
+// All .page-size-select elements on the page stay in sync.
 function bindPageSizeSelect(el, onChange) {
     if (typeof el === 'string') {
         el = document.getElementById(el);
@@ -54,7 +54,7 @@ function bindPageSizeSelect(el, onChange) {
         try {
             localStorage.setItem(PAGE_SIZE_STORAGE_KEY, this.value);
         } catch (e) {
-            // local storage nem elérhető
+            // local storage not available
         }
         let selects = document.getElementsByClassName('page-size-select');
         for (let i = 0, n = selects.length; i < n; i++) {
@@ -68,8 +68,8 @@ function bindPageSizeSelect(el, onChange) {
     });
 }
 
-// A #page_size_select legördülő bekötése a szerveroldali lapozású listákhoz.
-// reloadFn: az adott lista újratöltő függvénye (általában getTableData).
+// Binds the #page_size_select dropdown for server-side paginated lists.
+// reloadFn: the given list's reload function (usually getTableData).
 function initPageSize(reloadFn) {
     bindPageSizeSelect('page_size_select', function (size) {
         max = size;
@@ -80,8 +80,8 @@ function initPageSize(reloadFn) {
     });
 }
 
-// Kliensoldali lapozó: kirajzolja a lapozó vezérlőt `container`-be, és visszaadja
-// az aktuális oldal [start, end) tartományát (a hívó ezzel szeleteli a listát).
+// Client-side pagination: renders the pagination control into `container`, and
+// returns the current page's [start, end) range (the caller uses this to slice the list).
 function clientPage(container, total, page, size, onChange) {
     let pages = Math.max(1, Math.ceil(total / size));
     if (page < 0) {

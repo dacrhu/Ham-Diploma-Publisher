@@ -9,34 +9,36 @@
 						<h1 class="title is-4 has-text-centered">@(#register.title)</h1>
 
 						<form id="form_register">
+							<p class="is-size-7 has-text-grey mb-3"><span class="has-text-danger">*</span> @(#register.required.hint)</p>
+
 							<div class="columns is-desktop">
 								<div class="field column">
-									<label class="label">@(#register.firstname.label)</label>
+									<label class="label">@(#register.firstname.label) <span class="has-text-danger">*</span></label>
 									<input class="input" type="text" name="firstName" required>
 								</div>
 								<div class="field column">
-									<label class="label">@(#register.lastname.label)</label>
+									<label class="label">@(#register.lastname.label) <span class="has-text-danger">*</span></label>
 									<input class="input" type="text" name="lastName" required>
 								</div>
 							</div>
 
 							<div class="field">
-								<label class="label">@(#register.callsign.label)</label>
+								<label class="label">@(#register.callsign.label) <span class="has-text-danger">*</span></label>
 								<input class="input" type="text" name="callsign" required autocapitalize="characters">
 							</div>
 
 							<div class="field">
-								<label class="label">@(#register.email.label)</label>
+								<label class="label">@(#register.email.label) <span class="has-text-danger">*</span></label>
 								<input class="input" type="email" name="email" required autocomplete="email">
 							</div>
 
 							<div class="columns is-desktop">
 								<div class="field column">
-									<label class="label">@(#register.password.label)</label>
+									<label class="label">@(#register.password.label) <span class="has-text-danger">*</span></label>
 									<input class="input" type="password" name="password" id="input_password" required autocomplete="new-password">
 								</div>
 								<div class="field column">
-									<label class="label">@(#register.password.confirm.label)</label>
+									<label class="label">@(#register.password.confirm.label) <span class="has-text-danger">*</span></label>
 									<input class="input" type="password" name="passwordConfirm" required autocomplete="new-password">
 								</div>
 							</div>
@@ -50,7 +52,7 @@
 							</ul>
 
 							<div class="field">
-								<label class="label">@(#register.country.label)</label>
+								<label class="label">@(#register.country.label) <span class="has-text-danger">*</span></label>
 								<div class="control">
 									<div class="select is-fullwidth">
 										<select name="country" required>
@@ -62,6 +64,7 @@
 								</div>
 							</div>
 
+							<p class="help mb-2">@(#register.address.hint)</p>
 							<div class="columns is-desktop">
 								<div class="field column">
 									<label class="label">@(#register.street.label)</label>

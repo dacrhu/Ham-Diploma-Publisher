@@ -1,6 +1,6 @@
-// Audit log: minden lényeges műveletnél FUNC.logger($, message) hívással naplózunk.
-// $ lehet a teljes Total.js request-context ($ paraméter egy schema actionben),
-// vagy egy minimál { user, ip, req, res } alakú objektum is (lásd 01_auth.js).
+// Audit log: every significant operation is logged via a FUNC.logger($, message) call.
+// $ can be the full Total.js request context (the $ parameter in a schema action),
+// or a minimal object of the shape { user, ip, req, res } (see 01_auth.js).
 FUNC.logger = function ($, message) {
     let ip = $.ip;
     if (process.env.LOG_IP_HEADER && $.req) {

@@ -13,7 +13,7 @@
 	<form id="form_diploma">
 		<input type="hidden" id="input_id" name="id">
 
-		<!-- ===== Alapadatok ===== -->
+		<!-- ===== Basic data ===== -->
 		<div id="tab_basic">
 			<div class="field">
 				<label class="label">@(#diplomas.name.label)</label>
@@ -107,7 +107,7 @@
 			</div>
 		</div>
 
-		<!-- ===== Szabályok / Kihívás ===== -->
+		<!-- ===== Rules / Challenge ===== -->
 		<div id="tab_rules" class="is-hidden">
 		<div id="rules_standard_block">
 			<div class="field">
@@ -255,17 +255,28 @@
 				<p class="help mb-2">@(#diplomas.qsl.help)</p>
 				<input class="input" style="max-width: 120px;" type="number" name="qslSampleCount" id="input_qsl_sample_count" min="0" value="0">
 			</div>
-
-			<div class="field">
-				<label class="checkbox">
-					<input type="checkbox" name="autoApprove" id="input_auto_approve"> @(#diplomas.autoapprove.label)
-				</label>
-				<p class="help">@(#diplomas.autoapprove.help)</p>
-			</div>
 		</div>
 
 		<div id="rules_challenge_block" class="is-hidden">
 			<p class="notification is-warning is-light">@(#diplomas.challenge.notice)</p>
+
+			<div class="field">
+				<label class="label is-small">@(#diplomas.challenge.allowedbands.label)</label>
+				<input class="input" type="text" id="input_challenge_allowed_bands" list="band_values_datalist" placeholder="@(#diplomas.challenge.allowedbands.placeholder)">
+				<p class="help">@(#diplomas.challenge.allowedbands.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="label is-small">@(#diplomas.challenge.allowedmodes.label)</label>
+				<input class="input" type="text" id="input_challenge_allowed_modes" list="mode_values_datalist" placeholder="@(#diplomas.challenge.allowedmodes.placeholder)">
+				<p class="help">@(#diplomas.challenge.allowedmodes.help)</p>
+			</div>
+
+			<div class="field">
+				<label class="label is-small">@(#diplomas.challenge.commentfilter.label)</label>
+				<input class="input is-family-monospace" type="text" id="input_challenge_comment_filter_regex" placeholder="@(#diplomas.challenge.commentfilter.placeholder)">
+				<p class="help">@(#diplomas.challenge.commentfilter.help)</p>
+			</div>
 
 			<div class="field">
 				<label class="label">@(#diplomas.challenge.targetfield.label)</label>
@@ -279,18 +290,6 @@
 					</div>
 				</div>
 				<p class="help">@(#diplomas.challenge.targetfield.help)</p>
-			</div>
-
-			<div class="field">
-				<label class="label is-small">@(#diplomas.challenge.allowedbands.label)</label>
-				<input class="input" type="text" id="input_challenge_allowed_bands" list="band_values_datalist" placeholder="@(#diplomas.challenge.allowedbands.placeholder)">
-				<p class="help">@(#diplomas.challenge.allowedbands.help)</p>
-			</div>
-
-			<div class="field">
-				<label class="label is-small">@(#diplomas.challenge.allowedmodes.label)</label>
-				<input class="input" type="text" id="input_challenge_allowed_modes" list="mode_values_datalist" placeholder="@(#diplomas.challenge.allowedmodes.placeholder)">
-				<p class="help">@(#diplomas.challenge.allowedmodes.help)</p>
 			</div>
 
 			<div class="field">
@@ -342,9 +341,22 @@
 				<p class="help">@(#diplomas.challenge.allowrepeat.help)</p>
 			</div>
 		</div>
+
+		<hr>
+
+		<!-- Available for both types (standard/challenge) -- see
+		     schemas/diplomas/diplomas.js's autoApprove validation and
+		     public/js/pages/diplomas-admin-edit/21_autoapprove.js's interlock,
+		     which disables the appropriate QSL-sampling field per type. -->
+		<div class="field" id="autoapprove_block">
+			<label class="checkbox">
+				<input type="checkbox" name="autoApprove" id="input_auto_approve"> @(#diplomas.autoapprove.label)
+			</label>
+			<p class="help">@(#diplomas.autoapprove.help)</p>
+		</div>
 		</div>
 
-		<!-- ===== Fizetés ===== -->
+		<!-- ===== Payment ===== -->
 		<div id="tab_payment" class="is-hidden">
 			<div class="columns is-desktop">
 				<div class="field column">
@@ -404,7 +416,7 @@
 			</div>
 		</div>
 
-		<!-- ===== Elrendezés (overlay) ===== -->
+		<!-- ===== Layout (overlay) ===== -->
 		<div id="tab_overlay" class="is-hidden">
 			<p class="help mb-3">@(#diplomas.overlay.help)</p>
 

@@ -87,14 +87,14 @@ feEventId(button_reject, 'onclick', function () {
 	submitDecision(button_reject, 'reject');
 });
 
-// Soronkénti (QSO-hoz kötött) kézi korrekció — lásd views/submissions/detail.html
-// "qso-correct-row" (kezdetben rejtett) sorát minden QSO-sor alatt, és a
-// hozzá tartozó "qso-correct-toggle" (✎) gombot. Vagy egy diploma-szabályt
-// választ (a pontérték a szabályból jön, a szerver a diploma AKTUÁLIS
-// matchRules-éből olvassa újra, lásd Submissions/Submissions adjustPoints),
-// vagy egyéni pontszámot ad meg — a kettő kölcsönösen kizárja egymást (ha a
-// szabály-select-en van kiválasztva érték, a szerver figyelmen kívül hagyja
-// az "amount" mezőt).
+// Per-row (QSO-bound) manual correction — see views/submissions/detail.html's
+// "qso-correct-row" (initially hidden) row under every QSO row, and its
+// associated "qso-correct-toggle" (✎) button. Either a diploma rule is
+// selected (the point value comes from the rule, the server re-reads it from
+// the diploma's CURRENT matchRules, see Submissions/Submissions
+// adjustPoints), or a custom point value is given — the two are mutually
+// exclusive (if a value is selected in the rule select, the server ignores
+// the "amount" field).
 feEventSelector('.qso-correct-toggle', 'onclick', function () {
 	let row = document.querySelector('.qso-correct-row[data-qsoref="' + this.dataset.qsoref + '"]');
 	if (row) {

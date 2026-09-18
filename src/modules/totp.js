@@ -1,7 +1,7 @@
-// totp.js — RFC 6238 (TOTP) / RFC 4226 (HOTP) minimál, saját implementáció Node
-// beépített `crypto`-jával — nincs szükség külön npm csomagra. A secret Base32
-// kódolású (RFC 4648, "="-padding nélkül), ahogy az authenticator appok (Google
-// Authenticator, Authy stb.) elvárják.
+// totp.js — minimal, custom implementation of RFC 6238 (TOTP) / RFC 4226 (HOTP)
+// using Node's built-in `crypto` — no need for a separate npm package. The
+// secret is Base32-encoded (RFC 4648, without "=" padding), as expected by
+// authenticator apps (Google Authenticator, Authy, etc.).
 const crypto = require('crypto');
 
 global.TOTP = {};
@@ -52,17 +52,17 @@ function base32Decode(base32) {
     return Buffer.from(bytes);
 }
 
-// Új, véletlenszerű secret előállítása (alap: 20 byte = 160 bit, ez a szokásos
-// TOTP secret-hossz, Base32-ben kódolva).
+// Generates a new, random secret (default: 20 bytes = 160 bits, the usual
+// TOTP secret length, Base32-encoded).
 TOTP.generateSecret = function (byteLength) {
     return base32Encode(crypto.randomBytes(byteLength || 20));
 };
 
-// HOTP kód (RFC 4226) egy adott számlálóértékre.
+// HOTP code (RFC 4226) for a given counter value.
 function hotp(secretBuffer, counter, digits) {
     let counterBuffer = Buffer.alloc(8);
-    // A számláló 64 bites, de a mi időintervallumainkkal soha nem éri el a
-    // Number.MAX_SAFE_INTEGER-t, ezért a felső 4 byte mindig 0 marad.
+    // The counter is 64-bit, but with our time intervals it never reaches
+    // Number.MAX_SAFE_INTEGER, so the upper 4 bytes always stay 0.
     counterBuffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
     counterBuffer.writeUInt32BE(counter >>> 0, 4);
 
@@ -74,7 +74,7 @@ function hotp(secretBuffer, counter, digits) {
     return String(otp).padStart(digits, '0');
 }
 
-// TOTP kód generálása a megadott (vagy jelenlegi) időpontra.
+// Generates a TOTP code for the given (or current) time.
 TOTP.generate = function (base32Secret, forTimeMs, period, digits) {
     period = period || PERIOD;
     digits = digits || DIGITS;
@@ -82,8 +82,8 @@ TOTP.generate = function (base32Secret, forTimeMs, period, digits) {
     return hotp(base32Decode(base32Secret), counter, digits);
 };
 
-// TOTP kód ellenőrzése — `window` lépéssel korábbi/későbbi időablakot is elfogad
-// (óra-csúszás tolerancia), alapértelmezetten ±1 (azaz ±30 mp).
+// Verifies a TOTP code — with a `window` step, also accepts an earlier/later
+// time window (clock-drift tolerance), defaulting to ±1 (i.e. ±30 sec).
 TOTP.verify = function (base32Secret, token, window, period, digits) {
     if (!token)
         return false;
@@ -103,7 +103,7 @@ TOTP.verify = function (base32Secret, token, window, period, digits) {
     return false;
 };
 
-// otpauth:// URI az authenticator appban való beolvasáshoz (QR-kód forrása).
+// otpauth:// URI for scanning into an authenticator app (source for the QR code).
 TOTP.keyUri = function (base32Secret, accountEmail, issuer) {
     let label = encodeURIComponent(issuer) + ':' + encodeURIComponent(accountEmail);
     return `otpauth://totp/${label}?secret=${base32Secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=${DIGITS}&period=${PERIOD}`;

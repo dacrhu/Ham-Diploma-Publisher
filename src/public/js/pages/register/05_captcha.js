@@ -1,7 +1,8 @@
-// Rádióamatőr-tudást igénylő "captcha" (felhasználói kérésre, botok ellen) —
-// lásd modules/band-captcha.js + schemas/users/users.js captchaChallenge
-// actionje. A helyes válasz NEM kerül a kliensre, csak a token+kérdés+opciók —
-// a submit ($.model.captchaAnswer/captchaToken) szerveroldalon ellenőrződik.
+// Ham-radio-knowledge "captcha" (at user request, against bots) —
+// see modules/band-captcha.js + schemas/users/users.js captchaChallenge
+// action. The correct answer is NOT sent to the client, only the
+// token+question+options — the submit ($.model.captchaAnswer/captchaToken)
+// is validated server-side.
 const captcha_question = document.getElementById('captcha_question');
 const captcha_options = document.getElementById('captcha_options');
 const input_captcha_token = document.getElementById('input_captcha_token');
@@ -32,8 +33,8 @@ async function loadCaptcha() {
 			`);
 		}
 	} catch (err) {
-		// no-op — a form submit ilyenkor is hiányzó tokennel próbálkozik majd,
-		// a szerver elutasítja, a felhasználó az "Másik kérdés" linkkel újrapróbálhatja.
+		// no-op — in this case the form submit will attempt with a missing token,
+		// the server rejects it, and the user can retry via the "Another question" link.
 	}
 }
 

@@ -1,8 +1,8 @@
-// paypal-client.js — vékony saját REST-kliens a PayPal Orders v2 API-hoz és a
-// webhook-aláírás-ellenőrzéshez, a `fetch`-et natívan biztosító Node 22-vel
-// (lásd CLAUDE.md minimális dependencia elve — nem vettünk fel hozzá külön
-// npm SDK-t, a Stripe SDK-val ellentétben, mert a PayPal REST API-ja
-// (OAuth2 + pár egyszerű POST) nulláról is ésszerűen megírható).
+// paypal-client.js — thin custom REST client for the PayPal Orders v2 API and
+// webhook signature verification, using Node 22's native `fetch`
+// (see CLAUDE.md's minimal-dependency principle — we did not add a separate
+// npm SDK for it, unlike the Stripe SDK, because PayPal's REST API
+// (OAuth2 + a couple of simple POSTs) can reasonably be written from scratch).
 global.PAYPAL_CLIENT = {};
 
 function baseUrl() {
@@ -13,9 +13,9 @@ PAYPAL_CLIENT.isConfigured = function () {
     return !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
 };
 
-// Az OAuth2 access tokent nem cache-eljük (a Fizetés indítása/webhook-
-// feldolgozás ritka, alacsony forgalmú művelet — a cache-elés extra
-// állapotot/bonyolultságot vezetne be, ami itt nem térülne meg).
+// We don't cache the OAuth2 access token (starting a payment/processing a
+// webhook is a rare, low-traffic operation — caching would introduce extra
+// state/complexity that wouldn't pay off here).
 async function getAccessToken() {
     let auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64');
 
@@ -36,11 +36,10 @@ async function getAccessToken() {
     return json.access_token;
 }
 
-// amount: fő pénznem-egységben (pl. 5 = "5.00" EUR — a PayPal Orders API a
-// tizedesjegyes stringet várja, NEM a legkisebb egységet, ellentétben a
-// Stripe-pal). referenceId: a submission._id (String) — erre hivatkozva
-// azonosítjuk vissza a webhookban/return-oldalon, melyik beadványhoz tartozik
-// a rendelés.
+// amount: in the main currency unit (e.g. 5 = "5.00" EUR — the PayPal Orders API
+// expects the decimal string, NOT the smallest unit, unlike Stripe).
+// referenceId: the submission._id (String) — used to identify, in the
+// webhook/return page, which submission the order belongs to.
 PAYPAL_CLIENT.createOrder = async function (amount, currency, referenceId, returnUrl, cancelUrl) {
     let token = await getAccessToken();
 
@@ -93,10 +92,10 @@ PAYPAL_CLIENT.captureOrder = async function (orderId) {
     return json;
 };
 
-// A PayPal a webhook-aláírást NEM helyben (HMAC-kal), hanem egy saját API-
-// hívással ellenőrizteti (a kérés fejléceit + a nyers eseményt visszaküldve
-// nekik) — ez a hivatalosan dokumentált, ajánlott módszer (ellentétben a
-// Stripe-pal, ahol a titkos webhook-kulccsal helyben, HMAC-kal ellenőrzünk).
+// PayPal does NOT verify the webhook signature locally (with HMAC), but via a
+// dedicated API call (sending back the request headers + the raw event to
+// them) — this is the officially documented, recommended method (unlike
+// Stripe, where we verify locally with HMAC using the secret webhook key).
 PAYPAL_CLIENT.verifyWebhookSignature = async function (headers, eventBody) {
     let token = await getAccessToken();
 

@@ -60,7 +60,9 @@
 					<a href="/lang/de" class="lang-btn@{if language == 'de'} lang-active@{fi}"><img src="/flags/de.svg" alt="DE"> Deutsch</a>
 				</div>
 
-				<p class="is-size-7 mt-5" id="version">v@{CONF.version}</p>
+				<p class="is-size-7 mt-5 has-text-centered"><a href="/privacy" class="has-text-grey">@(#privacy.title)</a></p>
+				<p class="is-size-7 has-text-centered"><a href="https://github.com/dacrhu/Ham-Diploma-Publisher" target="_blank" rel="noopener noreferrer" class="has-text-grey">@(#menu.powered.by)</a></p>
+				<p class="is-size-7 has-text-centered" id="version">v1.1.0</p>
 			</aside>
 		</div>
 		<div class="column is-10 messages is-fullheight p-6" id="body_main">
@@ -68,6 +70,14 @@
 		</div>
 	</div>
 
+	<div class="cookie-banner is-hidden" id="cookie_banner">
+		<div class="cookie-banner-inner">
+			<p>@(#cookie.banner.text) <a href="/privacy">@(#privacy.title)</a></p>
+			<button class="button is-primary is-small" id="button_cookie_accept">@(#cookie.banner.accept)</button>
+		</div>
+	</div>
+
+	@{import('cookie-banner.js')}
 </body>
 
 </html>

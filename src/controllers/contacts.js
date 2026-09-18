@@ -1,8 +1,8 @@
-// Publikus "Kapcsolatok" oldal (felhasználói kérésre) — a manager/sa
-// szabadszövegesen (NYERS HTML-t is elfogadva) tölti fel a tartalmát a
-// /admin/settings oldalon (lásd schemas/settings/settings.js,
-// modules/settings-store.js SETTINGS.DEFAULTS.contactsHtml kommentje a
-// bizalmi/XSS-megfontolásról), itt csak megjelenítjük.
+// Public "Contacts" page (at user request) — the manager/sa
+// fills in its content as free text (accepting RAW HTML too) on the
+// /admin/settings page (see schemas/settings/settings.js,
+// modules/settings-store.js SETTINGS.DEFAULTS.contactsHtml comment on the
+// trust/XSS considerations), here we just display it.
 exports.install = function () {
     ROUTE('GET /contacts', view_contacts);
 };

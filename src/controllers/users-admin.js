@@ -1,8 +1,8 @@
-// Superadmin-only felhasználó-kezelő (/admin/users) — felhasználói kérésre:
-// lapozható/kereshető lista, egyedi adatlap (beadványokkal), tiltás/
-// visszakapcsolás, manager-jogosultság kiosztása/visszavonása (utóbbi kettő a
-// schemas/users/users.js setStatus/setManager actionjein keresztül, ott a
-// pontos jogosultsági szabályok kommentelve).
+// Superadmin-only user management (/admin/users) — at user request:
+// paginated/searchable list, individual detail page (with submissions), ban/
+// unban, granting/revoking manager permission (the latter two via the
+// schemas/users/users.js setStatus/setManager actions, where the exact
+// permission rules are commented).
 exports.install = function () {
     ROUTE('GET /admin/users', view_list);
     ROUTE('GET /admin/users/{id}', view_detail);

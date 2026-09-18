@@ -1,12 +1,12 @@
-// storage-local.js — lokális fájlrendszer storage driver (src/private/uploads/...).
-// A `STORAGE` globál egységes API-ját valósítja meg (lásd definitions/09_storage.js) —
-// ugyanezt az API-t valósítja meg a storage-s3.js is (11. lépés), így a
-// feltöltési/kiszolgálási útvonalak kódja nem tudja/nem is kell tudnia, melyik
-// driver aktív. Az EGYSÉGES, driver-független API: `save`, `read`, `exists`
-// (mindhárom async, még ha a helyi driver szinkron is tudná), `delete`,
-// `serve(controllerSelf, key, downloadName)` — a `filePath()` SZÁNDÉKOSAN NEM
-// része a driver-független szerződésnek (S3-nál nincs "helyi elérési út"),
-// csak ennek a fájlnak a belső segédfüggvénye.
+// storage-local.js — local filesystem storage driver (src/private/uploads/...).
+// Implements the `STORAGE` global's unified API (see definitions/09_storage.js) —
+// storage-s3.js (step 11) implements the same API too, so the upload/serving
+// route code doesn't know/need to know which driver is active. The UNIFIED,
+// driver-independent API: `save`, `read`, `exists` (all three async, even
+// though the local driver could do it synchronously), `delete`,
+// `serve(controllerSelf, key, downloadName)` — `filePath()` is DELIBERATELY NOT
+// part of the driver-independent contract (S3 has no "local path"), it's just
+// an internal helper function of this file.
 const FS = require('fs');
 const PATHMOD = require('path');
 
@@ -18,7 +18,7 @@ function filePath(key) {
     return PATH.private('uploads/' + key);
 }
 
-// key: pl. "diplomas/{id}/blank.jpg" — a src/private/uploads/ alá kerül.
+// key: e.g. "diplomas/{id}/blank.jpg" — goes under src/private/uploads/.
 STORAGE_LOCAL.save = async function (key, buffer) {
     let fullPath = filePath(key);
     let dir = PATHMOD.dirname(fullPath);
@@ -44,9 +44,9 @@ STORAGE_LOCAL.delete = async function (key) {
         FS.unlinkSync(fullPath);
 };
 
-// HTTP-válaszba kiszolgálás — a Total.js `self.file()`-ja natívan a lemezről
-// streamel, ezért itt egyszerűen delegálunk rá. `downloadName` opcionális
-// (`Content-Disposition` fájlnév, lásd controllers/submissions.js
+// Serving into the HTTP response — Total.js's `self.file()` natively streams
+// from disk, so here we simply delegate to it. `downloadName` is optional
+// (`Content-Disposition` filename, see controllers/submissions.js
 // serve_diploma_pdf).
 STORAGE_LOCAL.serve = async function (self, key, downloadName) {
     self.file('~' + filePath(key), downloadName);

@@ -1,6 +1,6 @@
-// MongoDB wrapper — egyedi minimál lib, a technológiai példaprojekt (EHS4) mintája alapján.
-// Minden metódus önálló kapcsolatot nyit és zár (nincs connection pool a wrapper szintjén).
-// Hiba esetén a visszatérési érték `[{error}]` — a hívó ezt ellenőrzi.
+// MongoDB wrapper — a custom minimal lib, based on the pattern of the technology reference project (EHS4).
+// Every method opens and closes its own connection (no connection pool at the wrapper level).
+// On error the return value is `[{error}]` — the caller checks this.
 const {
     MongoClient,
     ServerApiVersion
@@ -205,8 +205,8 @@ MDB.findOneAndUpdate = async function (database, collection, filter, update, opt
         const iDatabase = DB.db(database);
         const iCollection = iDatabase.collection(collection);
 
-        // A driver újabb verzióiban `returnDocument` kell `returnOriginal` helyett —
-        // mindig a frissített dokumentumot adjuk vissza alapértelmezésben.
+        // Newer driver versions require `returnDocument` instead of `returnOriginal` —
+        // by default we always return the updated document.
         const finalOptions = {
             ...options,
             returnDocument: options.returnDocument || 'after'

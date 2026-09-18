@@ -72,8 +72,8 @@ feEventId(form_diploma, 'onsubmit', async function (e) {
 		}
 
 		if (isNewDiploma) {
-			// Új diplománál a biankó kép feltöltéshez/overlay-szerkesztéshez valódi
-			// id kell -> teljes újratöltés a mentett diploma szerkesztő oldalára.
+			// For a new diploma, uploading the blank image/overlay editing needs a
+			// real id -> full reload to the saved diploma's edit page.
 			window.location.href = '/admin/diplomas/edit/' + json.id;
 			return;
 		}

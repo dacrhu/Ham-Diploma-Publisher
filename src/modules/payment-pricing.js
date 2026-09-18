@@ -1,9 +1,9 @@
-// payment-pricing.js — a diploma pricing{pdfFee,physicalFee,currency} mezőjéből
-// a ténylegesen fizetendő összeg kiszámítása egy adott beadványhoz. A
-// `physicalFee` mindig FELÁR a `pdfFee`-hez képest (lásd
-// diplomas.fee.physical.label resource-szöveg: "Fizikai példány díja
-// (felár)") — tehát fizikai kézbesítésnél a kettő ÖSSZEADÓDIK, nem csak a
-// physicalFee számít.
+// payment-pricing.js — calculates the amount actually payable for a given
+// submission from the diploma's pricing{pdfFee,physicalFee,currency} field. The
+// `physicalFee` is always a SURCHARGE on top of the `pdfFee` (see the
+// diplomas.fee.physical.label resource string: "Physical copy fee
+// (surcharge)") — so for physical delivery the two are ADDED TOGETHER, not
+// just physicalFee alone.
 global.PAYMENT_PRICING = {};
 
 PAYMENT_PRICING.calculateFee = function (diploma, deliveryChoice) {
@@ -14,12 +14,12 @@ PAYMENT_PRICING.calculateFee = function (diploma, deliveryChoice) {
     return deliveryChoice === 'physical' ? pdfFee + physicalFee : pdfFee;
 };
 
-// Stripe/PayPal a legkisebb pénznem-egységben (pl. eurocent) várja az
-// összeget — a rendszer mindenhol máshol a fő egységben (pl. "5" = 5 EUR)
-// tárolja/jeleníti meg. Csak a gyakori, 2 tizedesjegyes (100 alegységes)
-// pénznemeket kezeli (EUR/USD/GBP stb.) — ez a projekt eddigi egyetlen
-// ténylegesen használt pénzneme (EUR) is, nincs igény nulla-tizedesjegyes
-// (pl. JPY/HUF) pénznemek külön kezelésére.
+// Stripe/PayPal expects the amount in the smallest currency unit (e.g.
+// eurocent) — everywhere else the system stores/displays it in the main unit
+// (e.g. "5" = 5 EUR). Only handles common, 2-decimal (100-subunit) currencies
+// (EUR/USD/GBP etc.) — this is also the only currency actually used by this
+// project so far (EUR); there's no need to separately handle zero-decimal
+// currencies (e.g. JPY/HUF).
 PAYMENT_PRICING.toMinorUnits = function (amount) {
     return Math.round(Number(amount) * 100);
 };

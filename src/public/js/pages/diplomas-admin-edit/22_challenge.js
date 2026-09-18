@@ -1,7 +1,7 @@
-// Challenge diploma (jelentkezés -> körönkénti sorsolás egy célpont-poolból) --
-// admin-oldali KONFIGURÁCIÓ csak, a tényleges sorsolás/kör-egyeztetés egy
-// KÉSŐBBI lépés (lásd schemas/diplomas/diplomas.js tetején lévő kommentet).
-// Ugyanazt a dinamikus sor-táblázat mintát követi, mint a matchRules táblázat
+// Challenge diploma (application -> per-round draw from a target pool) --
+// admin-side CONFIGURATION only, the actual draw/round-matching is a
+// LATER step (see the comment at the top of schemas/diplomas/diplomas.js).
+// Follows the same dynamic row-table pattern as the matchRules table
 // (20_rules.js).
 const challenge_pool_body = document.getElementById('challenge_pool_body');
 const button_add_challenge_pool_item = document.getElementById('button_add_challenge_pool_item');
@@ -55,7 +55,8 @@ function collectChallengeData() {
 		roundDeadlineDays: document.getElementById('input_challenge_deadline_days').value || null,
 		qslSampleCount: document.getElementById('input_challenge_qsl_sample_count').value,
 		allowedBands: document.getElementById('input_challenge_allowed_bands').value.split(',').map(v => v.trim()).filter(v => v),
-		allowedModes: document.getElementById('input_challenge_allowed_modes').value.split(',').map(v => v.trim()).filter(v => v)
+		allowedModes: document.getElementById('input_challenge_allowed_modes').value.split(',').map(v => v.trim()).filter(v => v),
+		commentFilterRegex: document.getElementById('input_challenge_comment_filter_regex').value.trim()
 	};
 }
 

@@ -20,7 +20,13 @@
 			<tr>
 				<td>@{s.diplomaInfo ? s.diplomaInfo.name : '—'}</td>
 				<td><span class="tag @{s.statusClass}">@{s.statusLabel}</span></td>
-				<td class="has-text-right">@{s.totalPoints}</td>
+				<td class="has-text-right">
+					@{if s.diplomaInfo && s.diplomaInfo.type == 'challenge'}
+					@{s.challengeRoundText}
+					@{else}
+					@{s.totalPoints}
+					@{fi}
+				</td>
 				<td>@{new Date(s.created).toLocaleDateString(controller.language)}</td>
 				<td><a href="/submissions/@{s._id}" class="button is-small is-link is-light">@(#diplomas.public.list.details)</a></td>
 			</tr>

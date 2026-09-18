@@ -21,7 +21,6 @@
 # An environment variable always wins over the value written here.
 
 name                            : Ham Diploma Publisher
-version                         : 0.1.0
 
 cookieAuthName                                  : hdp_auth
 cookieLangName                                  : hdp_lang

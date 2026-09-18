@@ -1,21 +1,22 @@
-// rule-engine.js — egy beadott napló (ADIF_PARSER.parse eredménye) automatikus
-// kiértékelése egy diploma szabályrendszere (schemas/diplomas/diplomas.js)
-// szerint. Ezt hívja a controllers/submissions.js feltöltéskor.
+// rule-engine.js — automatic evaluation of a submitted log (the result of
+// ADIF_PARSER.parse) against a diploma's rule set (schemas/diplomas/diplomas.js).
+// Called by controllers/submissions.js on upload.
 //
-// FONTOS HATÓKÖR: ez KIZÁRÓLAG a technikai jogosultság-ellenőrzést végzi el
-// (teljesíti-e a beadvány a szabályokat) — nem dönt "elfogadás/elutasítás"-ról
-// a manager helyett, az a review UI (lásd controllers/submissions.js). Az
-// `eligibleAuto=false` eset a hívó oldalon `rejected_auto` végállapotot jelent
-// (nincs manager-teendő); `eligibleAuto=true` esetén a beadvány a
-// QSL-mintavételezésre vagy a manager-review-sorba kerül, ettől a modultól
-// függetlenül.
+// IMPORTANT SCOPE: this ONLY performs the technical eligibility check (whether
+// the submission satisfies the rules) — it doesn't decide "accept/reject" in
+// place of the manager, that's the review UI (see controllers/submissions.js).
+// The `eligibleAuto=false` case means a `rejected_auto` final state on the
+// caller side (no manager action needed); with `eligibleAuto=true` the
+// submission goes into QSL sampling or the manager review queue, independently
+// of this module.
 global.RULE_ENGINE = {};
 
-// diploma: a MongoDB diplomas dokumentum. qsos: ADIF_PARSER.parse() kimenete.
-// applicantCountry: a jelentkező FIÓKJÁBAN regisztrált ország (ISO alpha-2,
-// users.country) — NEM a hívójel DXCC-prefixéből számolt ország (az egy
-// külön, a challenge-jelentkezéshez tervezett modules/dxcc-prefixes.js
-// hatóköre, ide nem tartozik).
+// diploma: the MongoDB diplomas document. qsos: the output of
+// ADIF_PARSER.parse(). applicantCountry: the country registered in the
+// applicant's ACCOUNT (ISO alpha-2, users.country) — NOT the country computed
+// from the callsign's DXCC prefix (that is the scope of a separate module,
+// modules/dxcc-prefixes.js, designed for the challenge application, out of
+// scope here).
 RULE_ENGINE.evaluate = function (diploma, qsos, applicantCountry) {
     let ruleMode = diploma.ruleMode === 'points' ? 'points' : 'checklist';
     let matchRules = Array.isArray(diploma.matchRules) ? diploma.matchRules : [];
@@ -40,17 +41,18 @@ RULE_ENGINE.evaluate = function (diploma, qsos, applicantCountry) {
 
     for (let u = 0, un = usableItems.length; u < un; u++) {
         let item = usableItems[u];
-        // Pontozás módban egy QSO TÖBB szabályra is illeszkedhet (pl. egy
-        // hívójel-mező egyszerre matchel egy szűkebb ÉS egy tágabb wildcardra
-        // is, mint "OE7*" és "OE*") — ilyenkor NEM adódnak össze a pontok,
-        // hanem csak a legtöbbet érő illeszkedő szabály "alkalmazódik"
-        // (felhasználói döntés, MEGFORDÍTVA a korábbi, "a pontok összeadódnak"
-        // tervezési döntést — globális maximum, MEZŐTŐL FÜGGETLENÜL: pl. egy
-        // egyszerre hívójel- ÉS comment-szabálynak is megfelelő QSO-nál is csak
-        // az egy legmagasabb pontú szabály számít, a másik NEM adódik hozzá). Checklist
-        // módban ez nem értelmezett (ott nincs QSO-szintű pontszám, minden
-        // illeszkedő szabály `ruleSatisfied`-je számít, ezért ott továbbra is
-        // MINDEN illeszkedő szabály bekerül a `matchedRules`-be).
+        // In points mode a single QSO can match MULTIPLE rules (e.g. a
+        // callsign field simultaneously matches a narrower AND a broader
+        // wildcard, like "OE7*" and "OE*") — in this case the points are NOT
+        // added together, instead only the highest-value matching rule
+        // "applies" (a user decision, REVERSING the earlier design decision
+        // of "the points add up" — a global maximum, INDEPENDENT OF FIELD:
+        // e.g. for a QSO that matches both a callsign AND a comment rule at
+        // the same time, only that one highest-point rule counts, the other
+        // is NOT added). In checklist mode this doesn't apply (there is no
+        // QSO-level score there, every matching rule's `ruleSatisfied`
+        // counts, so there EVERY matching rule still goes into
+        // `matchedRules`).
         let bestRule = null;
 
         for (let ri = 0, rn = matchRules.length; ri < rn; ri++) {
@@ -76,12 +78,12 @@ RULE_ENGINE.evaluate = function (diploma, qsos, applicantCountry) {
             item.autoPoints += bestRule.points;
         }
 
-        // Az átjátszós bónusz csak egy MÁR a szabályok szerint is illeszkedő
-        // QSO-hoz adódik hozzá — egy egyébként a diplomához nem kapcsolódó
-        // (egyetlen matchRules-nek sem megfelelő) QSO önmagában, csak attól,
-        // hogy átjátszón történt, nem válik érvényessé. Ez a bónusz a fenti
-        // "csak a legjobb szabály számít" logikától FÜGGETLENÜL mindig
-        // hozzáadódik (nem szabály-illesztés, hanem külön diploma-beállítás).
+        // The repeater bonus is only added to a QSO that ALREADY matches
+        // according to the rules — a QSO that is otherwise unrelated to the
+        // diploma (doesn't match any matchRules) does not become valid merely
+        // because it happened over a repeater. This bonus is always added
+        // INDEPENDENTLY of the "only the best rule counts" logic above (it's
+        // not a rule match, but a separate diploma setting).
         if (ruleMode === 'points' && repeaterAllowed && repeaterPoints > 0 && item.qso.propMode === 'RPT' && item.matchedRules.length > 0) {
             item.autoPoints += repeaterPoints;
             item.matchedRules.push({ ruleLabel: null, field: 'repeater', operator: null, value: null, points: repeaterPoints });
@@ -115,37 +117,38 @@ RULE_ENGINE.evaluate = function (diploma, qsos, applicantCountry) {
     };
 };
 
-// Diploma-szintű érvényességi szűrők (a szabály-illesztéstől FÜGGETLENÜL dönti
-// el, hogy egy QSO egyáltalán számításba jöhet-e) — lásd a diploma allowedBands
-// és repeaterAllowed mezőinek kommentjét schemas/diplomas/diplomas.js-ben.
+// Diploma-level validity filters (decides, INDEPENDENTLY of rule matching,
+// whether a QSO can be considered at all) — see the comment on the diploma's
+// allowedBands and repeaterAllowed fields in schemas/diplomas/diplomas.js.
 function applyValidityFilters(items, allowedBands, repeaterAllowed) {
     for (let i = 0, n = items.length; i < n; i++) {
         let item = items[i];
 
-        // Ha a diploma sáv-korlátozást ad meg, egy hiányzó (napló nem tartalmazza
-        // a BAND mezőt) vagy nem listázott sávú QSO konzervatívan érvénytelen —
-        // nem kockáztatjuk, hogy egy azonosíthatatlan sávú QSO tévesen beleszámítson.
+        // If the diploma specifies a band restriction, a QSO with a missing
+        // (the log doesn't contain the BAND field) or unlisted band is
+        // conservatively invalid — we don't risk a QSO with an unidentifiable
+        // band being counted in by mistake.
         if (allowedBands.length && allowedBands.indexOf(item.qso.band) === -1) {
             item.excludedReason = 'band';
             continue;
         }
 
-        // Átjátszó-detektálás: az ADIF 3.x Propagation_Mode enumeráció "RPT"
-        // értéke ("terresztriális átjátszó/transzponder") a hivatalos,
-        // dokumentált jelzés erre — a napló <PROP_MODE:3>RPT mezőjéből olvasva
-        // (lásd modules/adif-parser.js). Ha a manager nem engedélyezi az
-        // átjátszót, egy ilyen QSO teljes egészében kizárva.
+        // Repeater detection: the ADIF 3.x Propagation_Mode enumeration's
+        // "RPT" value ("terrestrial repeater/transponder") is the official,
+        // documented indicator for this — read from the log's
+        // <PROP_MODE:3>RPT field (see modules/adif-parser.js). If the manager
+        // doesn't allow repeater use, such a QSO is excluded entirely.
         if (!repeaterAllowed && item.qso.propMode === 'RPT') {
             item.excludedReason = 'repeater';
         }
     }
 }
 
-// Duplikátum-kezelés (schemas/diplomas/diplomas.js duplicatePolicy): a napló
-// kronológiai sorrendjében (QSO_DATE+TIME_ON, hiányzó dátumnál az eredeti
-// napló-sorrend a tiebreak) az ELSŐ előfordulás számít, a policy szerinti
-// kulccsal (call, vagy call+band+mode) egyező KÉSŐBBI QSO-k duplikátumnak
-// jelölve — csak a validity-szűrőn már átjutott QSO-kon fut.
+// Duplicate handling (schemas/diplomas/diplomas.js duplicatePolicy): in the
+// log's chronological order (QSO_DATE+TIME_ON, with the original log order as
+// the tiebreak for a missing date) the FIRST occurrence counts, LATER QSOs
+// matching on the policy's key (call, or call+band+mode) are marked as
+// duplicates — this only runs on QSOs that already passed the validity filter.
 function markDuplicates(items, policy) {
     if (policy === 'allowed')
         return;
@@ -176,8 +179,9 @@ function markDuplicates(items, policy) {
     }
 }
 
-// A jelentkező körzete a diploma "hazai" országához képest — lásd a fenti
-// RULE_ENGINE.evaluate komment a homeCountry vs. DXCC-prefix döntésről.
+// The applicant's zone relative to the diploma's "home" country — see the
+// RULE_ENGINE.evaluate comment above about the homeCountry vs. DXCC-prefix
+// decision.
 function determineZone(applicantCountry, homeCountry) {
     let country = String(applicantCountry || '').toUpperCase();
     let home = String(homeCountry || '').toUpperCase();
@@ -188,10 +192,10 @@ function determineZone(applicantCountry, homeCountry) {
     return COUNTRIES.isEU(country) ? 'eu' : 'dx';
 }
 
-// Checklist mód: minden matchRules sornak illeszkednie kell LEGALÁBB EGY
-// (érvényes, nem duplikátum) QSO-ra — a pontszámnak itt nincs szerepe.
-// Szabály nélküli diploma (üres matchRules) sose eligibilis — defenzív eset,
-// az admin UI amúgy megköveteli legalább egy szabály megadását.
+// Checklist mode: every matchRules row must match AT LEAST ONE (valid,
+// non-duplicate) QSO — the score plays no role here. A diploma without rules
+// (empty matchRules) is never eligible — a defensive case, the admin UI
+// requires at least one rule to be specified anyway.
 function evaluateChecklist(matchRules, ruleSatisfied) {
     let checklistResults = matchRules.map((rule, ri) => ({
         ruleLabel: rule.label || null,
@@ -210,11 +214,11 @@ function evaluateChecklist(matchRules, ruleSatisfied) {
     };
 }
 
-// Pontozás mód, fokozatok NÉLKÜL: a diploma-szintű zoneThresholds a mérvadó,
-// a jelentkezőnek a saját körzete szerinti minimumot kell elérnie az összes
-// illeszkedő szabály pontjainak összegével. Hiányzó (null) küszöb = nincs
-// külön minimum ehhez a körzethez (lásd diplomas.zone.help szöveg) -> 0-ként
-// kezelve, azaz bármilyen (akár 0) pontszám automatikusan megfelel.
+// Points mode, WITHOUT tiers: the diploma-level zoneThresholds is authoritative,
+// the applicant has to reach the minimum for their own zone with the sum of
+// the points of all matching rules. A missing (null) threshold = no separate
+// minimum for this zone (see the diplomas.zone.help text) -> treated as 0,
+// i.e. any score (even 0) automatically qualifies.
 function evaluatePointsFlat(diploma, usableItems, zone) {
     let autoTotalPoints = usableItems.reduce((sum, item) => sum + item.autoPoints, 0);
     let threshold = (diploma.zoneThresholds && diploma.zoneThresholds[zone] != null) ? diploma.zoneThresholds[zone] : 0;
@@ -227,14 +231,14 @@ function evaluatePointsFlat(diploma, usableItems, zone) {
     };
 }
 
-// Pontozás mód, fokozatokkal: minden kategóriára (categoriesEnabled esetén az
-// adásmód-csoport szerint szűrt QSO-alhalmazon, egyébként az összes QSO-n,
-// "Mixed" kategóriaként) kiszámítja a kategórián belüli pontösszeget, majd a
-// (már `minPoints.home` szerint növekvő sorrendben tárolt, lásd
-// sanitizeTiers() schemas/diplomas/diplomas.js-ben) fokozat-létrán a
-// legmagasabb elért fokozatot. A beadvány automatikusan eligibilis, ha
-// LEGALÁBB EGY kategóriában elér legalább egy fokozatot (egy beadvány több
-// kategóriában is teljesíthet egyszerre, lásd a diploma admin súgó-szövegét).
+// Points mode, WITH tiers: for every category (if categoriesEnabled, on the
+// QSO subset filtered by mode group, otherwise on all QSOs, as the "Mixed"
+// category) it calculates the point total within the category, then finds the
+// highest achieved tier on the tier ladder (already stored sorted in
+// ascending order by `minPoints.home`, see sanitizeTiers() in
+// schemas/diplomas/diplomas.js). The submission is automatically eligible if
+// it reaches at least one tier in AT LEAST ONE category (a single submission
+// can qualify in multiple categories at once, see the diploma admin help text).
 function evaluatePointsTiers(diploma, usableItems, zone) {
     let categories = (Array.isArray(diploma.categories) ? diploma.categories : []).map(category => {
         let categoryItems = category.modeFilter
@@ -248,8 +252,9 @@ function evaluatePointsTiers(diploma, usableItems, zone) {
             let minPoints = tier.minPoints ? (tier.minPoints[zone] || 0) : 0;
             let achieved = categoryPoints >= minPoints;
 
-            // A tiers tömb minPoints.home szerint növekvő sorrendben van tárolva
-            // -> a legutolsó elért elem a legmagasabb elért fokozat.
+            // The tiers array is stored sorted in ascending order by
+            // minPoints.home -> the last achieved element is the highest
+            // achieved tier.
             if (achieved)
                 achievedTier = { key: tier.key, label: tier.label };
 

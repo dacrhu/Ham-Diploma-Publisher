@@ -4,12 +4,12 @@ const blank_preview_wrap = document.getElementById('blank_preview_wrap');
 const blank_preview_img = document.getElementById('blank_preview_img');
 const blank_upload_status = document.getElementById('blank_upload_status');
 
-// rawUrl: a NYERS (vízjel nélküli) kép — csak az overlay-szerkesztőnek kell a
-// pontos pozicionáláshoz, ez az útvonal manager-only (lásd
-// controllers/diplomas-admin.js serve_blank). watermarkedUrl: a feltöltéskor
-// előre legenerált, TÉNYLEGESEN vízjelezett JPEG (serve_blank_watermarked,
-// publikus) — ezt mutatja az "Alapadatok" fül előnézete, hogy az admin ne
-// kapjon félrevezető képet arról, mit lát majd egy nem-manager látogató.
+// rawUrl: the RAW (non-watermarked) image — only needed by the overlay editor
+// for precise positioning, this route is manager-only (see
+// controllers/diplomas-admin.js serve_blank). watermarkedUrl: the ACTUALLY
+// watermarked JPEG pre-generated at upload time (serve_blank_watermarked,
+// public) — this is what the "Basic data" tab's preview shows, so the admin
+// doesn't get a misleading picture of what a non-manager visitor will see.
 function setBlankImage(rawUrl, watermarkedUrl) {
 	blank_preview_img.src = watermarkedUrl;
 	blank_preview_wrap.classList.remove('is-hidden');

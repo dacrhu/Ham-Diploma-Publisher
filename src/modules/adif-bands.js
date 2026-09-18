@@ -1,20 +1,20 @@
-// adif-bands.js — ADIF Band-értékek csoportosítása (HF/VHF/UHF).
+// adif-bands.js — grouping of ADIF Band values (HF/VHF/UHF).
 //
-// Ugyanaz a probléma/megoldás-minta, mint a modules/adif-modes.js-nél: egy
-// diploma szabálynál gyakori igény, hogy SÁVRA adjunk pontot (pl. 80m 3, 40m 2,
-// 20m 1 — sávonkénti pontozás), vagy hogy a diploma csak BIZONYOS sávokon
-// teljesíthető legyen (pl. csak 80m/40m). A matchRules 'band' mezőjénél 3
-// operátor közül lehet választani: 'equals' / 'in_list' (konkrét sáv(ok), pl.
-// csak "80m"), vagy 'group' (egy egész sávtartomány, pl. "VHF").
+// The same problem/solution pattern as in modules/adif-modes.js: a common
+// requirement for a diploma rule is to award points PER BAND (e.g. 80m 3, 40m 2,
+// 20m 1 — per-band scoring), or to require the diploma to only be achievable on
+// CERTAIN bands (e.g. only 80m/40m). The matchRules 'band' field offers a choice
+// of 3 operators: 'equals' / 'in_list' (specific band(s), e.g. only "80m"), or
+// 'group' (a whole band range, e.g. "VHF").
 //
-// FONTOS: ez a lista NEM teljes ADIF Band enumeráció (pl. hiányoznak a
-// mikrohullámú sávok), csak a rádióamatőr diplomáknál leggyakrabban használt
-// sávokat tartalmazza. Az ADIF konvenciónak megfelelően kisbetűs "m"/"cm"
-// jelöléssel (pl. "80m", "70cm") — a szerveroldali sanitizeMatchRules ennek
-// megfelelően kisbetűsíti a beírt értékeket. Ha egy manager olyan sávot
-// szeretne használni, ami itt nincs, azt 'equals'/'in_list' operátorral akkor
-// is megadhatja szabadszavasan — ez a lista elsősorban az admin UI kényelmi
-// autocomplete-jéhez és a 'group' csoportosításhoz kell.
+// IMPORTANT: this list is NOT a complete ADIF Band enumeration (e.g. the
+// microwave bands are missing), it only contains the bands most commonly used
+// in radio amateur diplomas. Using the lowercase "m"/"cm" notation per the ADIF
+// convention (e.g. "80m", "70cm") — the server-side sanitizeMatchRules
+// lowercases entered values accordingly. If a manager wants to use a band that
+// isn't in here, they can still enter it freely with the 'equals'/'in_list'
+// operator — this list is primarily for the admin UI's convenience
+// autocomplete and for the 'group' grouping.
 global.ADIF_BANDS = {};
 
 ADIF_BANDS.GROUPS = {
@@ -25,11 +25,11 @@ ADIF_BANDS.GROUPS = {
 
 ADIF_BANDS.GROUP_NAMES = Object.keys(ADIF_BANDS.GROUPS);
 
-// Az összes ismert konkrét sáv-érték egy lapos listában (admin UI autocomplete-hez).
+// All known concrete band values in a flat list (for the admin UI autocomplete).
 ADIF_BANDS.ALL = [].concat.apply([], ADIF_BANDS.GROUP_NAMES.map(g => ADIF_BANDS.GROUPS[g]));
 
-// Melyik csoport(ok)ba tartozik egy adott sáv-érték (a jövőbeli rule-engine-nek,
-// 6. lépés).
+// Which group(s) a given band value belongs to (for the future rule-engine,
+// step 6).
 ADIF_BANDS.groupsOf = function (band) {
     band = (band || '').toLowerCase();
     let result = [];

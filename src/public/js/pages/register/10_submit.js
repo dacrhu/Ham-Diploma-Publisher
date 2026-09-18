@@ -22,9 +22,9 @@ feEventId(form_register, 'onsubmit', async function (e) {
 			notification_error.classList.remove('is-hidden');
 			button_register.classList.remove('is-loading');
 			button_register.disabled = false;
-			// A captcha-token a szerveroldalon EGYSZER használatos (a sikertelen
-			// próbálkozás is elhasználja) — új kérdés nélkül a következő submit
-			// biztosan elbukna, ezért mindig töltünk egy frisset.
+			// The captcha token is single-use server-side (a failed attempt
+			// also consumes it) — without a new question the next submit
+			// would definitely fail, so we always load a fresh one.
 			loadCaptcha();
 		}
 	} catch (err) {

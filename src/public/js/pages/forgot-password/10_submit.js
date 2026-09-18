@@ -16,8 +16,8 @@ feEventId(form_forgot, 'onsubmit', async function (e) {
 			body: JSON.stringify(body)
 		});
 	} catch (err) {
-		// A visszajelzés szándékosan mindig ugyanaz (lásd backend), hálózati
-		// hiba esetén is megmutatjuk az "elküldve" üzenetet.
+		// The feedback is intentionally always the same (see backend), we show
+		// the "sent" message even in case of a network error.
 	}
 
 	form_forgot.classList.add('is-hidden');

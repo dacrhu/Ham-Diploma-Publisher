@@ -1,6 +1,6 @@
-// MongoDB indexek létrehozása induláskor. Egyelőre csak a `users.email` egyedi
-// index kell (M1 2. lépés) — a további kollekciók indexei a megfelelő lépéseknél
-// bővítik ezt a listát.
+// Creating MongoDB indexes at startup. For now only the `users.email` unique
+// index is needed (M1 step 2) — indexes for further collections will extend
+// this list at the appropriate steps.
 ON('ready', async function () {
     await MDB.ensureIndexes(process.env.MONGODB_DB_NAME, 'users', [
         { key: { email: 1 }, name: 'email_unique', unique: true },
@@ -13,10 +13,11 @@ ON('ready', async function () {
         { key: { created: -1 }, name: 'created_idx' }
     ]);
 
-    // 6. lépés — Beadási folyamat (lásd controllers/submissions.js): a
-    // diplomaId+userId pár a "van-e már blokkoló beadványa ehhez a diplomához"
-    // ellenőrzéshez kell (upload_submission/view_new), a userId+created a saját
-    // beadványok listájához (Submissions/Submissions query).
+    // Step 6 — Submission process (see controllers/submissions.js): the
+    // diplomaId+userId pair is needed for the "does the user already have a
+    // blocking submission for this diploma" check (upload_submission/view_new),
+    // the userId+created pair for the list of the user's own submissions
+    // (Submissions/Submissions query).
     await MDB.ensureIndexes(process.env.MONGODB_DB_NAME, 'submissions', [
         { key: { diplomaId: 1, userId: 1 }, name: 'diploma_user_idx' },
         { key: { userId: 1, created: -1 }, name: 'user_created_idx' }

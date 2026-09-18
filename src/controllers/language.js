@@ -1,5 +1,5 @@
-// Nyelvváltó — a LOCALIZE hook (02_localization.js) a cookie-t részesíti előnyben
-// a query paraméterrel szemben, ezért a nyelvváltáshoz a cookie-t kell beállítani.
+// Language switcher — the LOCALIZE hook (02_localization.js) prefers the cookie
+// over the query parameter, so switching language requires setting the cookie.
 exports.install = function () {
     ROUTE('GET /lang/{code}', set_language);
 };

@@ -1,3 +1,3 @@
-// A `qrcode` npm csomag globális elérhetővé tétele — a TOTP-enrollment QR-kód
-// (data URL PNG) generálásához használja a Users/Users séma (mfaSetupSelect).
+// Making the `qrcode` npm package globally available — used by the Users/Users
+// schema (mfaSetupSelect) to generate the TOTP enrollment QR code (data URL PNG).
 global.QRCode = require('qrcode');

@@ -1,12 +1,12 @@
-// Total.js LOCALIZE hook — a request nyelvét adja vissza.
-// Sorrend: nyelvi cookie -> ?language= query param -> manager által
-// beállított alapértelmezett nyelv (settings.defaultLanguage) -> 'hu'.
-// Bejelentkezett usernél a saját `language` fiókbeállítása a bejelentkezéskor
-// a nyelvi cookie-ba kerül (lásd users schema), így ez a hook nem kell hogy
-// külön DB-hívást indítson minden requestnél — a hook SZINKRON (nincs módja
-// megvárni egy Mongo-hívást), ezért a settings-store.js memóriabeli
-// SETTINGS.cache-ét olvassa közvetlenül, ugyanúgy, ahogy a
-// definitions/12_site_branding.js is teszi.
+// Total.js LOCALIZE hook — returns the request's language.
+// Order: language cookie -> ?language= query param -> the default language
+// set by the manager (settings.defaultLanguage) -> 'hu'.
+// For a logged-in user, their own `language` account setting is written into
+// the language cookie at login (see the users schema), so this hook doesn't
+// need to make a separate DB call on every request — the hook is SYNCHRONOUS
+// (it has no way to await a Mongo call), so it reads settings-store.js's
+// in-memory SETTINGS.cache directly, the same way
+// definitions/12_site_branding.js does too.
 LOCALIZE(function (req, res) {
     if (req.cookie(CONF.cookieLangName)) {
         return req.cookie(CONF.cookieLangName);

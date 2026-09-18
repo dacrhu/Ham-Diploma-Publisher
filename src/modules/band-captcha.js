@@ -1,14 +1,15 @@
-// band-captcha.js — rádióamatőr-tudást igénylő "captcha" a regisztrációhoz
-// (felhasználói kérésre, botok ellen): egy frekvenciát (kHz) mutatunk, és
-// feleletválasztósan kell eltalálni, melyik amatőrsávba esik.
+// band-captcha.js — a "captcha" for registration that requires radio-amateur
+// knowledge (at the user's request, against bots): we show a frequency (kHz)
+// and the user has to guess, multiple-choice, which amateur band it falls into.
 //
-// A sávhatárok az IARU 1. régió (Európa) engedélyezett amatőr sávjai szerintiek
-// — SZÁNDÉKOSAN csak a kellően SZÉLES/egyértelmű sávok szerepelnek itt (a
-// keskeny/csatornázott 2200m, 630m, 60m kimaradt), hogy a frekvencia-választás
-// biztos margóval a sávszélek közé essen, elkerülve a szélek körüli
-// kétértelműséget. Nem cél a teljes ADIF/ITU enumeráció (lásd
-// modules/adif-bands.js hasonló, szándékosan nem teljes listája) — ez a modul
-// KIZÁRÓLAG a captcha kérdésgeneráláshoz kell, nem a diploma-szabályokhoz.
+// The band edges follow the IARU Region 1 (Europe) licensed amateur bands
+// — DELIBERATELY only the sufficiently WIDE/unambiguous bands are included here
+// (the narrow/channelized 2200m, 630m, 60m are left out), so that the chosen
+// frequency falls well within the band edges with a safe margin, avoiding
+// ambiguity near the edges. A complete ADIF/ITU enumeration is not the goal
+// (see the similarly, deliberately incomplete list in modules/adif-bands.js)
+// — this module is used EXCLUSIVELY for captcha question generation, not for
+// diploma rules.
 global.BAND_CAPTCHA = {};
 
 const BANDS = [
@@ -30,9 +31,9 @@ function randomInt(min, max) {
     return min + Math.floor(Math.random() * (max - min + 1));
 }
 
-// Egész kHz-es frekvenciát választ a sávon belül, a szélektől biztos
-// margóval (a sáv szélességének ~10%-a, min. 2, max. 10 kHz) — hogy a kérdés
-// ne egy vitatható, sávszél-közeli értéket adjon.
+// Picks a whole-kHz frequency within the band, with a safe margin from the
+// edges (~10% of the band's width, min. 2, max. 10 kHz) — so that the question
+// doesn't give a debatable value close to the band edge.
 function pickFrequency(band) {
     let span = band.maxKHz - band.minKHz;
     let margin = Math.min(10, Math.max(2, Math.round(span * 0.1)));
@@ -57,11 +58,11 @@ function shuffle(arr) {
     return arr;
 }
 
-// Visszaad egy { frequencyKHz, options[4], answer } objektumot — az `answer`
-// KIZÁRÓLAG szerveroldali ellenőrzéshez kell, a hívó felelőssége, hogy ne
-// kerüljön ki a kliensnek (lásd schemas/users/users.js captchaChallenge
-// actionje, ami csak a token+kérdés+opciókat adja vissza, az answert Redisbe
-// menti).
+// Returns a { frequencyKHz, options[4], answer } object — the `answer` is
+// EXCLUSIVELY for server-side verification, it's the caller's responsibility
+// not to let it reach the client (see schemas/users/users.js captchaChallenge
+// action, which only returns the token+question+options, saving the answer
+// to Redis).
 BAND_CAPTCHA.generate = function () {
     let index = Math.floor(Math.random() * BANDS.length);
     let band = BANDS[index];

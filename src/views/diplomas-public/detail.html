@@ -173,13 +173,16 @@
 	<p>@(#diplomas.public.detail.cta.login)</p>
 	<a class="button is-primary" href="/login">@(#diplomas.public.detail.cta.login.button)</a>
 	<span class="is-size-7 has-text-grey ml-3">@(#diplomas.public.detail.cta.register.text) <a href="/register">@(#diplomas.public.detail.cta.register.button)</a></span>
-	@{else if repository.diploma.type == 'challenge'}
-	<p class="has-text-grey">@(#diplomas.public.detail.cta.soon)</p>
 	@{else if repository.ctaState.type == 'expired'}
 	<p class="has-text-grey">@(#diplomas.public.detail.cta.expired)</p>
 	@{else if repository.ctaState.type == 'existing'}
 	<p>@(#diplomas.public.detail.cta.existing)</p>
 	<a class="button" href="/submissions/@{repository.ctaState.submissionId}">@(#diplomas.public.detail.cta.existing.link)</a>
+	@{else if repository.diploma.type == 'challenge'}
+	<p class="is-size-7 has-text-grey mb-2">@(#diplomas.public.detail.cta.apply.intro)</p>
+	<form method="post" action="/submissions/apply/@{repository.diploma._id}">
+		<button type="submit" class="button is-primary">@(#diplomas.public.detail.cta.apply.button)</button>
+	</form>
 	@{else}
 	<a class="button is-primary" href="/submissions/new/@{repository.diploma._id}">@(#diplomas.public.detail.cta.submit.button)</a>
 	@{fi}

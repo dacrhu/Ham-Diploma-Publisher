@@ -7,17 +7,17 @@ exports.install = function () {
     ROUTE('+GET /api/admin/diplomas/{id} *Diplomas/Diplomas --> get');
     ROUTE('+POST /api/admin/diplomas *Diplomas/Diplomas --> save');
     ROUTE('+POST /api/admin/diplomas/delete *Diplomas/Diplomas --> delete');
-    // Elrendezés-előnézet (demo adatokkal, az AKTUÁLIS — akár még el nem mentett
-    // — overlayFields állapotból) — lásd Diplomas/Diplomas previewRender action.
+    // Layout preview (with demo data, from the CURRENT — possibly not yet saved
+    // — overlayFields state) — see the Diplomas/Diplomas previewRender action.
     ROUTE('+POST /api/admin/diplomas/{id}/preview *Diplomas/Diplomas --> previewRender');
     ROUTE('+POST /upload/diplomas/{id}/blank', upload_blank, ['upload'], Number(process.env.UPLOAD_MAX_FILE_SIZE_IN_KB));
-    // A NYERS (vízjel nélküli) biankó kép mostantól MANAGER-ONLY (lásd
-    // serve_blank isManager-ellenőrzését) — csak az admin overlay-szerkesztőnek
-    // kell, a pontos pozicionáláshoz. Korábban szándékosan auth nélküli volt "a
-    // publikus előnézetnek is kelleni fog" indoklással — ez volt a hiba: a user
-    // észrevette, hogy így a vízjel csak CSS-overlay, a letöltött fájlon nincs
-    // rajta. A publikus/nem-manager oldalnak a vízjeles (ténylegesen legenerált)
-    // verziót kell használnia, lásd serve_blank_watermarked lent.
+    // The RAW (unwatermarked) blank image is now MANAGER-ONLY (see
+    // serve_blank's isManager check) — only the admin overlay editor needs it,
+    // for precise positioning. It used to be intentionally without auth, with
+    // the reasoning "the public preview will need it too" — that was the bug:
+    // the user noticed that this way the watermark was only a CSS overlay, not
+    // actually present on the downloaded file. The public/non-manager side must
+    // use the watermarked (actually generated) version, see serve_blank_watermarked below.
     ROUTE('GET /uploads/diplomas/{id}/blank', serve_blank);
     ROUTE('GET /uploads/diplomas/{id}/blank-watermarked', serve_blank_watermarked);
 };
@@ -26,12 +26,11 @@ function isManager(self) {
     return !!(self.user && (self.user.sa || self.user.permissions.indexOf('manager') !== -1));
 }
 
-// Egy diplomát csak a superadmin, vagy a diplomához hozzárendelt (managerId)
-// manager láthat/kezelhet — lásd Diplomas/Diplomas query/get/save/delete
-// actionök ugyanezen szabályát (schemas/diplomas/diplomas.js). Itt a
-// controller-szintű route-oknak (nézet + kép feltöltés/kiszolgálás) kell
-// ugyanez, hogy egy nem hozzárendelt manager ne is jusson el idáig ismert id
-// birtokában.
+// A diploma can only be seen/managed by the superadmin, or by the manager
+// assigned to it (managerId) — see the same rule in the Diplomas/Diplomas
+// query/get/save/delete actions (schemas/diplomas/diplomas.js). Here the
+// controller-level routes (view + image upload/serving) need the same, so
+// that an unassigned manager can't get this far even knowing the id.
 async function canAccessDiploma(self, id) {
     if (self.user && self.user.sa)
         return true;
@@ -59,9 +58,9 @@ async function view_edit(id) {
         return;
     }
 
-    // Új diploma létrehozása mostantól superadmin-only — lásd Diplomas/Diplomas
-    // save action ugyanezen korlátozását. Egy plain manager csak a hozzá
-    // rendelt, MÁR LÉTEZŐ diplomákat szerkesztheti.
+    // Creating a new diploma is now superadmin-only — see the same restriction
+    // on the Diplomas/Diplomas save action. A plain manager can only edit the
+    // ALREADY EXISTING diplomas assigned to them.
     if (id === 'new') {
         if (!self.user.sa) {
             self.redirect('/admin/diplomas');
@@ -102,19 +101,19 @@ async function upload_blank(id) {
 
     await STORAGE.save(key, buffer);
 
-    // A feltöltéssel EGYÜTT rögtön legenerálunk egy ténylegesen vízjelezett
-    // (Puppeteer-rel legetetett) JPEG-et is — ezt szolgálja ki majd bárkinek a
-    // serve_blank_watermarked, a nyers fájlt pedig csak managernek a serve_blank.
-    // Ha a renderelés hibázik, az egész feltöltést elutasítjuk (nem hagyunk
-    // vízjel nélküli publikus verziót elérhetetlen állapotban) — a nyers fájlt
-    // is töröljük, hogy ne maradjon árva, DB-rekord nélküli kép a storage-on.
+    // TOGETHER with the upload, we immediately generate an actually watermarked
+    // (Puppeteer-rendered) JPEG as well — this is what serve_blank_watermarked
+    // will serve to anyone, while the raw file is served only to a manager, via
+    // serve_blank. If the rendering fails, we reject the whole upload (so we
+    // don't leave an unwatermarked public version in an unreachable state) — we
+    // also delete the raw file, so no orphaned, DB-record-less image is left in storage.
     let watermarkedKey = `diplomas/${id}/blank-watermarked.jpg`;
     let watermarkedBuffer;
 
     try {
         watermarkedBuffer = await CERT_RENDERER.render(await STORAGE.read(key), key, [], {}, true);
     } catch (e) {
-        FUNC.logger(self, `Diplomas/Diplomas upload blank image: vízjelezés sikertelen (${id}): ${e.message}`);
+        FUNC.logger(self, `Diplomas/Diplomas upload blank image: watermarking failed (${id}): ${e.message}`);
         await STORAGE.delete(key);
         self.json({ success: false, message: RESOURCE(self.language, 'error.diploma.blank.watermark') });
         return;
@@ -132,7 +131,7 @@ async function upload_blank(id) {
         return;
     }
 
-    FUNC.logger(self, `Diplomas/Diplomas upload blank image: ${id} (${key}, vízjelezve: ${watermarkedKey})`);
+    FUNC.logger(self, `Diplomas/Diplomas upload blank image: ${id} (${key}, watermarked: ${watermarkedKey})`);
     self.json({
         success: true,
         url: `/uploads/diplomas/${id}/blank?v=${Date.now()}`,
@@ -140,8 +139,8 @@ async function upload_blank(id) {
     });
 }
 
-// Csak manager (az overlay-szerkesztőnek kell a pontos pozicionáláshoz) — lásd
-// a fenti route-komment indoklását.
+// Manager only (needed by the overlay editor for precise positioning) — see
+// the route comment's reasoning above.
 async function serve_blank(id) {
     let self = this;
 
@@ -170,9 +169,9 @@ async function serve_blank(id) {
     await STORAGE.serve(self, diploma.blankImage.key);
 }
 
-// Publikus (nincs auth-ellenőrzés) — a feltöltéskor előre legenerált, TÉNYLEGESEN
-// vízjelezett JPEG-et szolgálja ki (lásd upload_blank). Ezt fogja használni az
-// admin "Alapadatok" fül előnézete is, és majd az 5. lépés publikus oldala.
+// Public (no auth check) — serves the ACTUALLY watermarked JPEG pre-generated
+// at upload time (see upload_blank). This will also be used by the admin
+// "Basic data" tab's preview, and later by step 5's public page.
 async function serve_blank_watermarked(id) {
     let self = this;
     let diploma = await MDB.findOne(process.env.MONGODB_DB_NAME, 'diplomas', { _id: MDB.ObjectID(id) }, { projection: { blankImage: 1 } });

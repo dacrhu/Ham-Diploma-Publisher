@@ -1,7 +1,7 @@
-// Redis wrapper — egyedi minimál lib, a technológiai példaprojekt (EHS4) mintája alapján.
-// Session (db=HDP_REDIS_DB_SESSION), MFA-kód (db=HDP_REDIS_DB_MFA), jelszó-reset
-// (db=HDP_REDIS_DB_CHANGE_PASSWORD) és e-mail megerősítés (db=HDP_REDIS_DB_EMAIL_VERIFY)
-// célra használt kulcs-érték / hash tárolás.
+// Redis wrapper — a custom minimal lib, based on the pattern of the technology reference project (EHS4).
+// Key-value / hash storage used for session (db=HDP_REDIS_DB_SESSION), MFA code
+// (db=HDP_REDIS_DB_MFA), password reset (db=HDP_REDIS_DB_CHANGE_PASSWORD) and
+// email confirmation (db=HDP_REDIS_DB_EMAIL_VERIFY) purposes.
 const {
     createClient
 } = require("redis");

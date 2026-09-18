@@ -1,7 +1,7 @@
-// A `stripe` npm csomag globális elérhetővé tétele — Stripe Checkout Session
-// létrehozásához (Submissions/Submissions `pay` action) és a webhook-esemény
-// aláírás-ellenőrzéséhez (controllers/payments.js) egyaránt. `STRIPE_SECRET_KEY`
-// hiányában (fejlesztői env, még nincs valódi kulcs) `global.STRIPE` marad
-// `null` — a hívó helyeknek ELLENŐRIZNIÜK kell, mielőtt használnák (lásd
+// Making the `stripe` npm package globally available — used both for creating a
+// Stripe Checkout Session (Submissions/Submissions `pay` action) and for
+// verifying the webhook event signature (controllers/payments.js). Without
+// `STRIPE_SECRET_KEY` (dev env, no real key yet) `global.STRIPE` stays
+// `null` — callers MUST CHECK before using it (see
 // error.payment.provider.unavailable).
 global.STRIPE = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;

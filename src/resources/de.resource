@@ -23,6 +23,11 @@ home.intro : Veröffentlichung und Beantragung von Amateurfunk-Diplomen an einem
 
 contacts.title : Kontakt
 contacts.empty : Diese Seite ist derzeit leer — der Manager kann sie auf der Einstellungsseite ausfüllen.
+privacy.title : Datenschutzerklärung
+menu.powered.by : Powered by Ham Diploma Publisher
+privacy.empty : Diese Seite ist derzeit leer — der Manager kann sie auf der Einstellungsseite ausfüllen.
+cookie.banner.text : Diese Website verwendet für den Betrieb notwendige Cookies (Anmeldung, Spracheinstellung). Details:
+cookie.banner.accept : Verstanden
 
 // --- Fehlermeldungen ---
 error.password.invalid : Das Passwort erfüllt die Anforderungen nicht (mind. 12 Zeichen, Groß-/Kleinbuchstaben, Ziffer, Sonderzeichen).
@@ -42,6 +47,7 @@ error.user.cannot_disable_sa : Ein Superadmin-Konto kann nicht gesperrt werden.
 
 // --- Registrierung ---
 register.title : Registrieren
+register.required.hint : Pflichtfeld
 register.email.label : E-Mail-Adresse
 register.password.label : Passwort
 register.password.confirm.label : Passwort bestätigen
@@ -52,6 +58,7 @@ register.country.label : Land
 register.street.label : Straße, Hausnummer
 register.city.label : Stadt
 register.zip.label : Postleitzahl
+register.address.hint : Die Adresse ist nur erforderlich, wenn Sie das Diplom gedruckt per Post erhalten möchten — andernfalls können Sie sie leer lassen.
 register.submit : Registrieren
 register.success.title : Registrierung erfolgreich
 register.success.text : Wir haben eine Bestätigungs-E-Mail an die angegebene Adresse gesendet. Bitte klicken Sie auf den Link darin, um Ihr Konto zu aktivieren.
@@ -240,9 +247,12 @@ diplomas.autoapprove.help : Wenn das System eine Einreichung anhand des Logs aut
 
 diplomas.challenge.notice : Der Ablauf Bewerbung/Auslosung/rundenweise Log-Prüfung befindet sich noch in Entwicklung — hier können vorerst nur die Einstellungen konfiguriert werden.
 diplomas.challenge.targetfield.label : Zielfeld
-diplomas.challenge.targetfield.help : Welche Daten das System pro Runde aus der unten stehenden Liste auslost, und in welchem Log-Feld die Verbindung des Funkamateurs übereinstimmen muss.
+diplomas.challenge.targetfield.help : Welche Daten das System pro Runde aus der unten stehenden Liste auslost, und in welchem Log-Feld die Verbindung des Funkamateurs übereinstimmen muss. Bei "Land" tragen Sie in der Spalte "Wert" ein Rufzeichen-Präfix ein (z. B. "HA", "OE") — das System prüft, ob das Rufzeichen im Log damit beginnt.
+diplomas.challenge.commentfilter.label : Comment-Filter (regulärer Ausdruck, optional)
+diplomas.challenge.commentfilter.placeholder : z. B. TG[0-9]{3,4}
+diplomas.challenge.commentfilter.help : Eine eigenständige, vom obigen "Ziel-Feld"/der Ziel-Liste UNABHÄNGIGE Bedingung, die für JEDES QSO gilt — wenn ausgefüllt, zählt ein QSO nur dann zur Challenge, wenn das COMMENT-Feld des Logs ZUSÄTZLICH zu diesem regulären Ausdruck passt, UND das Ziel trifft (UND-Verknüpfung). Beispiel: Ziel-Feld "Land", Liste: "HA", "OE" (Rufzeichen-Präfixe), und hier "TG[0-9]{3,4}" — ein QSO mit Rufzeichen "HA1AA" und Kommentar "TG123" ist gültig (das Rufzeichen beginnt mit HA UND der Kommentar passt zum 3-4-stelligen TG-Muster), ein QSO mit "OE1BB" / "TG98" dagegen NICHT (der Kommentar hat nur 2 Ziffern und passt nicht zum Muster), selbst wenn das Rufzeichen-Präfix allein passen würde. Leer lassen, wenn keine solche zusätzliche Bedingung gelten soll.
 diplomas.challenge.targetfield.call : Rufzeichen
-diplomas.challenge.targetfield.country : Land
+diplomas.challenge.targetfield.country : Land (nach Rufzeichen-Präfix)
 diplomas.challenge.targetfield.comment : Sonstige Kennung (Log-Feld Kommentar, z. B. Relais/Talkgroup)
 diplomas.challenge.allowedbands.label : Erlaubte Bänder (kommagetrennt)
 diplomas.challenge.allowedbands.help : Wenn ausgefüllt (z. B. "80m, 40m, 20m"), ist in einer Runde nur eine auf einem dieser Bänder hergestellte Verbindung gültig — ein auf einem anderen Band (z. B. 2m) hergestelltes QSO ist automatisch ungültig. Leer lassen, wenn keine Band-Beschränkung gilt.
@@ -251,7 +261,7 @@ diplomas.challenge.allowedmodes.label : Erlaubte Betriebsarten (kommagetrennt)
 diplomas.challenge.allowedmodes.help : Wenn ausgefüllt (z. B. "FT8, DMR"), ist in einer Runde nur eine mit einer dieser Betriebsarten hergestellte Verbindung gültig — ein mit einer anderen Betriebsart hergestelltes QSO ist automatisch ungültig. Leer lassen, wenn keine Beschränkung gilt.
 diplomas.challenge.allowedmodes.placeholder : z. B. FT8, DMR
 diplomas.challenge.pool.label : Ziel-Pool
-diplomas.challenge.pool.help : Aus diesen lost das System pro Runde aus. Die "Bezeichnung" ist optional, dient nur der Anzeige (z. B. Ländername, Talkgroup-Name).
+diplomas.challenge.pool.help : Aus diesen lost das System pro Runde aus. Die "Bezeichnung" ist optional, dient nur der Anzeige (z. B. ein Ländername). Bei Ziel-Feld "Land" tragen Sie in "Wert" ein Rufzeichen-Präfix ein (z. B. "HA") und in "Bezeichnung" den Anzeigenamen (z. B. "Ungarn").
 diplomas.challenge.pool.col.value : Wert
 diplomas.challenge.pool.col.label : Bezeichnung (optional)
 diplomas.challenge.pool.add : Element hinzufügen
@@ -375,7 +385,8 @@ diplomas.public.detail.cta.login : Zur Bewerbung müssen Sie sich anmelden.
 diplomas.public.detail.cta.login.button : Anmelden
 diplomas.public.detail.cta.register.text : Noch kein Konto?
 diplomas.public.detail.cta.register.button : Registrieren
-diplomas.public.detail.cta.soon : Die Log-Einreichung wird in Kürze verfügbar sein.
+diplomas.public.detail.cta.apply.intro : Mit der Bewerbung startet die erste Runde: Das System lost die Ziele aus, die Sie in dieser Runde erfüllen müssen.
+diplomas.public.detail.cta.apply.button : Für die Challenge bewerben
 diplomas.public.detail.cta.submit.button : Log hochladen / Einreichen
 diplomas.public.detail.cta.expired : Die Einreichungsfrist ist abgelaufen, für dieses Diplom können keine Logs mehr eingereicht werden.
 diplomas.public.detail.cta.existing : Für dieses Diplom haben Sie bereits eine Einreichung.
@@ -397,9 +408,15 @@ error.diploma.create.forbidden : Zum Erstellen eines neuen Diploms ist eine Supe
 error.diploma.challenge.target_field : Wählen Sie ein Zielfeld auf dem Reiter "Challenge" (Rufzeichen / Land / sonstige Kennung).
 error.diploma.challenge.pool_empty : Fügen Sie mindestens ein Element zum Ziel-Pool auf dem Reiter "Challenge" hinzu.
 error.diploma.challenge.pool_too_small : Der Ziel-Pool ist für so viele Runden/Auslosungen ohne Wiederholung zu klein — vergrößern Sie den Pool, verringern Sie die Rundenzahl/Anzahl pro Runde, oder erlauben Sie Wiederholungen.
+error.diploma.challenge.comment_regex : Der im Comment-Filter-Feld angegebene Wert ist kein gültiger regulärer Ausdruck
 
 // --- MFA-Admin-Einstellungen ---
 settings.title : Einstellungen
+settings.tab.general : Allgemein
+settings.tab.contact : Kontakt
+settings.tab.privacy : Datenschutz
+settings.tab.qsl : QSL-Typen
+settings.tab.security : Sicherheit
 settings.appearance.section : Erscheinungsbild
 settings.appearance.logo.label : Eigenes Logo (oben in der Seitenleiste, auf jeder Seite)
 settings.appearance.logo.choose : Datei auswählen…
@@ -415,6 +432,10 @@ settings.appearance.welcometext.label : Begrüßungstext
 settings.appearance.welcometext.help : Jede Zeile wird als eigener Absatz auf der Startseite angezeigt. Wenn leer gelassen, wird der Standard-Einführungstext angezeigt.
 settings.contacts.label : Inhalt der Kontaktseite
 settings.contacts.help : Frei bearbeitbarer Inhalt für die öffentliche "Kontakt"-Seite — HTML-Tags sind erlaubt (z. B. &lt;p&gt;, &lt;a href="..."&gt;, &lt;strong&gt;), das System zeigt sie unverändert als echtes HTML an. Da hier beliebiges HTML eingegeben werden kann, füllen Sie es nur aus einer vertrauenswürdigen Quelle (Manager/Superadmin) aus.
+settings.privacy.label : Inhalt der Datenschutzerklärung
+settings.privacy.help : Frei bearbeitbarer Inhalt für die öffentliche "Datenschutzerklärung"-Seite (HTML-Tags erlaubt, wie bei der Kontaktseite). Tragen Sie ein, wer der Verantwortliche ist und wo die Seite gehostet wird. Bei Bedarf können Sie auch eine Übersetzung in einer anderen Sprache hinzufügen — einfach unter den englischen Text in dasselbe Feld schreiben.
+settings.qsl.label : Akzeptierte QSL-Bestätigungstypen
+settings.qsl.help : Diese Typen werden den Bewerbern beim Hochladen einer QSL-Bestätigung angezeigt, damit sie wissen, welche Quellen wir akzeptieren.
 settings.mfa.section : Zwei-Faktor-Authentifizierung (MFA)
 settings.mfa.user.label : Funkamateure
 settings.mfa.manager.label : Manager
@@ -424,7 +445,6 @@ settings.mfa.policy.required : Verpflichtend
 settings.mfa.methods.label : Erlaubte Methoden
 settings.submit : Speichern
 settings.saved : Einstellungen gespeichert.
-settings.managers.moved.hint : Die Zuweisung von Diplom-Managern und das Sperren von Benutzern ist jetzt unter dem Menüpunkt "Benutzer" (/admin/users) verfügbar.
 // --- Benutzerverwaltung (/admin/users, nur Superadmin) ---
 users.admin.title : Benutzer
 users.admin.search.placeholder : Suche nach Rufzeichen, Name oder E-Mail…
@@ -527,6 +547,7 @@ submissions.status.rejected : Abgelehnt
 submissions.status.awaiting_payment : Wartet auf Zahlung
 submissions.status.paid : Bezahlt
 submissions.status.completed : Abgeschlossen
+submissions.status.challenge_in_progress : Challenge läuft
 
 error.submission.notfound : Einreichung nicht gefunden.
 error.submission.forbidden : Sie haben keinen Zugriff auf diese Einreichung.
@@ -536,11 +557,50 @@ error.submission.qsl.file.required : Bitte wählen Sie ein Bild oder PDF für di
 
 submissions.detail.qsl.title : QSL-Bestätigung
 submissions.detail.qsl.intro : Für die folgenden Verbindungen benötigt das System eine QSL-Bestätigung (Screenshot oder Scan) — die Einreichung geht erst zur Prüfung, wenn Sie für jede eine hochgeladen haben.
+submissions.detail.qsl.types.label : Akzeptierte Bestätigungstypen:
+submissions.detail.qsl.types.hint : Laden Sie einen Screenshot oder ein gescanntes Bild hoch, auf dem die Bestätigungsmarkierung gut sichtbar ist (z. B. der kleine Stern bei QRZ, das grüne "C" bei Clublog, der bestätigte QSO-Status bei LoTW/eQSL/HRDLog/iQSL, oder die Papierkarte selbst bei einer papierbasierten QSL).
+qsl.type.lotw : LoTW
+qsl.type.eqsl : eQSL
+qsl.type.qrz : QRZ
+qsl.type.clublog : Clublog
+qsl.type.hrdlog : HRDLog / iQSL
+qsl.type.email : E-Mail-QSL
+qsl.type.paper : Papier-QSL
 submissions.detail.qsl.col.call : Rufzeichen
 submissions.detail.qsl.col.image : Bestätigung
 submissions.detail.qsl.uploaded : Hochgeladen — ansehen
 submissions.detail.qsl.choose : Datei auswählen
 submissions.detail.qsl.upload.button : Hochladen
+submissions.detail.challenge.round.label : Runde
+submissions.detail.challenge.deadline.label : Frist der aktuellen Runde
+submissions.detail.challenge.deadline.missed : Die Frist von Runde {0} ist abgelaufen, bevor Sie alle Ziele erfüllt haben — die Challenge wurde deshalb vom System abgelehnt, genauso wie ein abgelehntes Diplom im normalen Ablauf.
+submissions.detail.challenge.rounds.title : Runden
+submissions.detail.challenge.round.col.number : Runde
+submissions.detail.challenge.round.col.status : Status
+submissions.detail.challenge.round.col.deadline : Frist
+submissions.detail.challenge.round.col.targets : Ziele
+submissions.detail.challenge.round.status.awaiting_log : Wartet auf Log-Upload
+submissions.detail.challenge.round.status.awaiting_qsl : Wartet auf QSL-Bestätigung
+submissions.detail.challenge.round.status.completed : Abgeschlossen
+submissions.detail.challenge.log.title : Log für diese Runde hochladen
+submissions.detail.challenge.log.progress : Ziele bisher erfüllt
+submissions.detail.challenge.log.result.title : Ergebnis des letzten Uploads
+submissions.detail.challenge.log.result.col.call : Rufzeichen
+submissions.detail.challenge.log.result.col.band : Band
+submissions.detail.challenge.log.result.col.mode : Betriebsart
+submissions.detail.challenge.log.result.col.comment : Kommentar
+submissions.detail.challenge.log.result.col.result : Ergebnis
+submissions.detail.challenge.qso.matched : Erfüllt: {0}
+submissions.detail.challenge.qso.reason.band : Dieses Band gehört nicht zu den für diese Challenge erlaubten
+submissions.detail.challenge.qso.reason.mode : Diese Betriebsart gehört nicht zu den für diese Challenge erlaubten
+submissions.detail.challenge.qso.reason.comment_filter : Der Kommentar entspricht nicht dem erforderlichen Format
+submissions.detail.challenge.qso.reason.already_matched : Dieses Ziel wurde bereits durch eine andere Verbindung erfüllt — diese war nicht nötig
+submissions.detail.challenge.qso.reason.no_target_match_call : Das Rufzeichen stimmt mit keinem der ausgelosten Ziele überein
+submissions.detail.challenge.qso.reason.no_target_match_comment : Der Kommentar stimmt mit keinem der ausgelosten Ziele überein
+submissions.detail.challenge.qso.reason.no_target_match_country : Das Rufzeichen beginnt mit keinem der ausgelosten Länder-Präfixe
+submissions.detail.challenge.log.choose : Log-Datei auswählen
+submissions.detail.challenge.log.upload.button : Hochladen
+submissions.detail.challenge.qsl.title : QSL-Bestätigung für diese Runde
 
 // --- Manager-Prüfung (Schritt 8) ---
 menu.admin.review : Prüfung
@@ -596,6 +656,9 @@ email.submission.review_needed.btn : Einreichung ansehen
 email.submission.qsl_needed.subject : QSL-Bestätigung hochladen
 email.submission.qsl_needed.intro : Für Ihr eingereichtes Logbuch beim Diplom "{0}" müssen Sie für {1} QSO(s) eine QSL-Bestätigung (Bild oder Scan) hochladen, bevor die Einreichung geprüft werden kann.
 email.submission.qsl_needed.btn : QSL hochladen
+email.submission.challenge_failed.subject : Challenge gescheitert — Frist verpasst
+email.submission.challenge_failed.intro : Leider ist die Frist von Runde {0} abgelaufen, bevor Sie alle Ziele erfüllt haben, daher hat das System die Challenge abgelehnt.
+email.submission.challenge_failed.btn : Einreichung ansehen
 
 error.payment.state : Diese Einreichung befindet sich derzeit nicht in einem Zustand, der diese Zahlungsaktion erlaubt.
 error.payment.method : Ungültige oder nicht verfügbare Zahlungsmethode für dieses Diplom.

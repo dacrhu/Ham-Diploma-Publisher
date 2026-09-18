@@ -247,3 +247,43 @@ body.rulemode-checklist .rule-points-col {
 	height: auto;
 	text-align: left;
 }
+
+/* Süti-elfogadó sáv (views/layout.html + public/js/cookie-banner.js) — az
+   oldal aljához rögzítve, minden más elem fölött, amíg a látogató el nem
+   fogadja (localStorage, lásd a JS-ben). Szándékosan NEM a Bulma
+   `notification is-dark` osztálya adja a színeket (felhasználói
+   visszajelzés: azzal alig olvasható volt a szöveg) — helyette fix,
+   garantáltan kontrasztos sötét háttér + fehér szöveg.  */
+.cookie-banner {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 100;
+	margin: 0;
+	border-radius: 0;
+	padding: 1rem 1.5rem;
+	background-color: #1b1b1b;
+	color: #ffffff;
+}
+
+.cookie-banner-inner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	max-width: 1100px;
+	margin: 0 auto;
+}
+
+.cookie-banner-inner p {
+	margin: 0;
+	color: #ffffff;
+}
+
+.cookie-banner a {
+	color: #8fc4ff;
+	text-decoration: underline;
+	font-weight: 600;
+}

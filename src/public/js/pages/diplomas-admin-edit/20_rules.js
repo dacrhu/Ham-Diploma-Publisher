@@ -8,16 +8,16 @@ const band_groups_datalist = document.getElementById('band_groups_datalist');
 const input_repeater_allowed = document.getElementById('input_repeater_allowed');
 const repeater_points_field = document.getElementById('repeater_points_field');
 
-// Technikai (admin-only) feliratok mezőnként/operátoronként — nyelvenként, mert
-// ezek dinamikusan generált <option> elemek, amiket nem tudunk resource-fájlból
-// szerver-oldalon renderelni.
+// Technical (admin-only) labels per field/operator — per language, because
+// these are dynamically generated <option> elements that we can't render
+// server-side from a resource file.
 //
-// FONTOS: a placeholder-t MEZŐ+OPERÁTOR kombinációra kell kulcsolni, nem csak
-// operátorra — az "equals"/"in_list" operátor több mezőnél (qth, mode) is
-// elérhető, és mezőnként más-más értelmes példa kell (a QTH-nál városnév, a
-// MODE-nál rádiós adásmód) — ha csak operátor szerint kulcsoljuk, a QTH
-// városnév-példája (Vác, Nagymaros...) rossz helyen (pl. Adásmódnál) is
-// megjelenik.
+// IMPORTANT: the placeholder must be keyed on the FIELD+OPERATOR combination,
+// not just the operator — the "equals"/"in_list" operator is available on
+// multiple fields (qth, mode), and each field needs a different, meaningful
+// example (a city name for QTH, a radio mode for MODE) — if we keyed only on
+// the operator, QTH's city-name example would also show up in the wrong
+// place (e.g. for Mode).
 const RULE_I18N = {
 	hu: {
 		call: 'Hívójel', comment: 'Megjegyzés (COMMENT)', qth: 'QTH', mode: 'Adásmód', band: 'Sáv',
@@ -61,10 +61,11 @@ function valuePlaceholderFor(field, operator) {
 	return (byField && byField[operator]) || '';
 }
 
-// A hívójel (call) mezőnél elérhető a 'regex' operátor is — arra az esetre, amikor
-// a wildcard (*/?) nem elég precíz (pl. csak-kétbetűs-suffix diploma: ^OE\d[A-Z]{2}$).
-// A mode mezőnél a 'group' egy egész adásmód-csoportra illeszkedik (lásd
-// modules/adif-modes.js) — így nem kell egyenként felsorolni pl. minden digi módot.
+// The callsign (call) field also has the 'regex' operator available — for
+// cases where the wildcard (*/?) isn't precise enough (e.g. a
+// two-letter-suffix-only diploma: ^OE\d[A-Z]{2}$).
+// For the mode field, 'group' matches an entire mode group (see
+// modules/adif-modes.js) — so we don't have to list e.g. every digi mode individually.
 const OPERATORS_BY_FIELD = {
 	call: ['wildcard', 'regex'],
 	comment: ['contains', 'equals'],
@@ -73,9 +74,9 @@ const OPERATORS_BY_FIELD = {
 	band: ['equals', 'in_list', 'group']
 };
 
-// Ugyanaz a csoportosítás, mint a szerveroldali modules/adif-modes.js — csak a
-// datalist (autocomplete) kényelmi funkcióhoz kell itt is, nem a tényleges
-// illesztéshez (az a 6. lépés rule-engine-jében történik majd).
+// Same grouping as the server-side modules/adif-modes.js — needed here only
+// for the datalist (autocomplete) convenience feature, not for the actual
+// matching (that will happen in step 6's rule engine).
 const MODE_GROUPS = {
 	CW: ['CW'],
 	PHONE: ['SSB', 'USB', 'LSB', 'FM', 'AM'],
@@ -83,7 +84,7 @@ const MODE_GROUPS = {
 	IMAGE: ['SSTV', 'FAX', 'ATV']
 };
 
-// Ugyanaz a csoportosítás, mint a szerveroldali modules/adif-bands.js.
+// Same grouping as the server-side modules/adif-bands.js.
 const BAND_GROUPS = {
 	HF: ['2200m', '630m', '160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m'],
 	VHF: ['6m', '4m', '2m', '1.25m'],
@@ -206,10 +207,10 @@ feEventId(button_add_rule, 'onclick', function () {
 	addRuleRow();
 });
 
-// Az átjátszó pontértéke csak pontozás módban ÉS csak akkor értelmes, ha az
-// átjátszó használata egyáltalán engedélyezett — a két feltétel függetlenül
-// változhat (ruleMode rádiógomb, illetve a checkbox), ezért mindkét esemény
-// után újra kiértékeljük.
+// The repeater's point value only makes sense in scoring mode AND only if
+// using a repeater is allowed at all — the two conditions can change
+// independently (the ruleMode radio button and the checkbox, respectively),
+// so we re-evaluate after both events.
 function syncRepeaterPointsVisibility() {
 	let isPoints = document.querySelector('input[name="ruleMode"]:checked').value === 'points';
 	repeater_points_field.classList.toggle('is-hidden', !isPoints || !input_repeater_allowed.checked);
@@ -218,16 +219,16 @@ function syncRepeaterPointsVisibility() {
 feEventSelector('input[name="ruleMode"]', 'onchange', function () {
 	document.body.classList.toggle('rulemode-checklist', this.value === 'checklist');
 	zone_thresholds_block.classList.toggle('is-hidden', this.value !== 'points');
-	// A tiers_block (fokozatok: Bronz/Ezüst/Arany) a 25_tiers.js-ben van deklarálva,
-	// ami ezután a fájl után töltődik be — ez itt egy függvénytörzsben fut le, csak
-	// a felhasználó tényleges kattintásakor, addigra a const már létezik.
+	// tiers_block (tiers: Bronze/Silver/Gold) is declared in 25_tiers.js, which
+	// loads after this file — this runs inside a function body, only when the
+	// user actually clicks, by which time the const already exists.
 	tiers_block.classList.toggle('is-hidden', this.value !== 'points');
 	syncRepeaterPointsVisibility();
 });
 
 feEventId(input_repeater_allowed, 'onchange', syncRepeaterPointsVisibility);
 
-// Kezdeti állapot: checklist mód -> pont oszlop + körzet-küszöbök elrejtve.
+// Initial state: checklist mode -> points column + zone thresholds hidden.
 document.body.classList.add('rulemode-checklist');
 zone_thresholds_block.classList.add('is-hidden');
 syncRepeaterPointsVisibility();

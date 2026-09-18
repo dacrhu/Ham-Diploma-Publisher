@@ -1,6 +1,6 @@
-// Total.js AUTH hook — minden requestnél lefut. A `$.user`-t tölti fel a Redis-ben
-// tárolt session alapján; a tényleges hozzáférés-korlátozást a ROUTE '+' prefixe és
-// a schema action `permissions` mezője végzi (Total.js natív mechanizmus).
+// Total.js AUTH hook — runs on every request. Populates `$.user` based on the
+// session stored in Redis; actual access restriction is done by the ROUTE '+' prefix
+// and the schema action's `permissions` field (Total.js native mechanism).
 AUTH(async function ($) {
     let cookie = $.cookie(CONF.cookieAuthName);
 

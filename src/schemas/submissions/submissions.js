@@ -1,15 +1,15 @@
-// Submissions/Submissions — a rádióamatőr saját beadványainak listázása/
-// megtekintése. A LÉTREHOZÁS (napló feltöltés + rule-engine kiértékelés) NEM
-// ezen a sémán keresztül megy — a multipart file upload miatt egy sima
-// controller-actionben történik (lásd controllers/submissions.js
-// upload_submission), ugyanaz a minta, mint a diploma biankó kép feltöltésénél
-// (controllers/diplomas-admin.js upload_blank, nem Diplomas/Diplomas action).
+// Submissions/Submissions — listing/viewing the radio amateur's own
+// submissions. CREATION (log upload + rule-engine evaluation) does NOT go
+// through this schema — because of the multipart file upload, it happens in
+// a plain controller action (see controllers/submissions.js
+// upload_submission), the same pattern as uploading a diploma's blank image
+// (controllers/diplomas-admin.js upload_blank, not a Diplomas/Diplomas action).
 
 NEWSCHEMA('Submissions/Submissions', function (schema) {
 
-    // A bejelentkezett user SAJÁT beadványainak listája — nincs `permissions`
-    // megkötés (bármelyik bejelentkezett user jogosult a sajátjaira), a
-    // Users/Users get/save mintáját követve (lásd schemas/users/users.js).
+    // The list of the logged-in user's OWN submissions — no `permissions`
+    // restriction (any logged-in user is entitled to their own), following
+    // the pattern of Users/Users get/save (see schemas/users/users.js).
     schema.action('query', {
         language: true,
         action: async function ($) {
@@ -37,11 +37,11 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
         }
     });
 
-    // Superadmin-only: egy TETSZŐLEGES felhasználó beadványai — a
-    // /admin/users/{id} felhasználó-adatlaphoz kell (lásd
-    // schemas/users/users.js adminGet/adminList — felhasználói kérésre), NEM
-    // a saját, `$.user._id`-hez kötött `query` actiont bővítettem ki, hogy az
-    // ne kaphasson (akár csak elvi) jogosultság-kikerülési lehetőséget.
+    // Superadmin-only: the submissions of an ARBITRARY user — needed for the
+    // /admin/users/{id} user profile page (see schemas/users/users.js's
+    // adminGet/adminList — at user request); I did NOT extend the own,
+    // `$.user._id`-bound `query` action for this, so that it doesn't get even
+    // a theoretical permission-bypass opportunity.
     schema.action('adminForUser', {
         language: true,
         action: async function ($) {
@@ -95,10 +95,11 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
         }
     });
 
-    // Manager review-sor (8. lépés) — a plain manager csak a HOZZÁ rendelt
-    // diplomák beadványait látja (lásd managedDiplomaIds), a superadmin mindet.
-    // Alapértelmezett szűrés `pending_review`-ra (ez a tényleges "várólista"),
-    // `?status=all` esetén nincs szűrés, egyébként a megadott konkrét státuszra.
+    // Manager review queue (step 8) — a plain manager only sees the
+    // submissions of the diplomas ASSIGNED TO them (see managedDiplomaIds),
+    // superadmin sees all. Default filter is `pending_review` (this is the
+    // actual "queue"), no filter for `?status=all`, otherwise the given
+    // specific status.
     schema.action('reviewQueue', {
         permissions: ['manager'],
         language: true,
@@ -141,23 +142,25 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
         }
     });
 
-    // Kézi pontkorrekció — csak `pending_review` állapotban (a QSL-mintavételezésre
-    // váró, illetve a már elbírált beadványoknál nincs értelme). Egy manualAdjustments
-    // bejegyzés kerül a listához (nem felülírás), a totalPoints pedig
-    // autoTotalPoints + az ÖSSZES korrekció összegeként számolódik újra — így a
-    // teljes korrekciós történet megmarad, visszakövethető. Opcionálisan egy
-    // KONKRÉT QSO-hoz köthető (`qsoRef` — a qsoBreakdown tömbindexe, NEM önálló
-    // Mongo-id, lásd a fájl tetejének kommentjét), hogy pl. egy olyan QSO is
-    // kaphasson pontot, amit az automatikus szabály-illesztés kihagyott (pl. a
-    // COMMENT nem tartalmazta szó szerint a "YL" jelölést, de a manager tudja,
-    // hogy releváns). `qsoRef` nélkül a korrekció a teljes beadványra vonatkozik
-    // (nem QSO-specifikus, pl. egyéb méltányossági pont).
-    // A `ruleIndex` (opcionális) esetén a pontérték NEM a kliensből jön — a
-    // diploma AKTUÁLIS `matchRules[ruleIndex].points`-ából olvasunk, hogy a kézi
-    // korrekció mindig a ténylegesen konfigurált szabály-pontértékkel legyen
-    // konzisztens (a kliens csak a `reason` szöveget adja, amit a
-    // controllers/submissions.js view_detail által előre kiszámolt, lokalizált
-    // szabály-leírásból tölt ki — lásd describeMatchedRule ottani hívását).
+    // Manual point correction — only in `pending_review` status (pointless
+    // for submissions awaiting QSL sampling, or already reviewed). A
+    // manualAdjustments entry is added to the list (not an overwrite), and
+    // totalPoints is recomputed as autoTotalPoints + the sum of ALL
+    // corrections — this way the full correction history is preserved and
+    // traceable. Optionally bindable to a SPECIFIC QSO (`qsoRef` — the array
+    // index of qsoBreakdown, NOT a standalone Mongo id, see the comment at
+    // the top of the file), so e.g. a QSO that the automatic rule matching
+    // skipped can still get points (e.g. the COMMENT didn't literally contain
+    // the "YL" marker, but the manager knows it's relevant). Without
+    // `qsoRef`, the correction applies to the entire submission
+    // (not QSO-specific, e.g. some other equity point).
+    // For `ruleIndex` (optional), the point value does NOT come from the
+    // client — we read it from the diploma's CURRENT
+    // `matchRules[ruleIndex].points`, so that the manual correction is always
+    // consistent with the actually configured rule point value (the client
+    // only supplies the `reason` text, which it fills in from the localized
+    // rule description precomputed by controllers/submissions.js's
+    // view_detail — see its call to describeMatchedRule there).
     schema.action('adjustPoints', {
         permissions: ['manager'],
         input: 'qsoRef:string, amount:number, reason:string, ruleIndex:number',
@@ -170,10 +173,20 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
                 return;
             }
 
-            let diploma = await MDB.findOne(process.env.MONGODB_DB_NAME, 'diplomas', { _id: MDB.ObjectID(submission.diplomaId) }, { projection: { managerId: 1, matchRules: 1 } });
+            let diploma = await MDB.findOne(process.env.MONGODB_DB_NAME, 'diplomas', { _id: MDB.ObjectID(submission.diplomaId) }, { projection: { managerId: 1, matchRules: 1, type: 1 } });
 
             if (!isReviewerOf($.user, submission, diploma)) {
                 $.callback({ success: false, message: RESOURCE($.language, 'error.submission.forbidden') });
+                return;
+            }
+
+            // A challenge diploma has no concept of qsoBreakdown/scoring (see
+            // the "=== Challenge ===" section of controllers/submissions.js)
+            // — the UI never offers this control for a challenge submission,
+            // but a direct API call shouldn't be able to run into a
+            // meaningless correction that silently fixes nothing either.
+            if (diploma && (diploma.type || 'standard') === 'challenge') {
+                $.callback({ success: false, message: RESOURCE($.language, 'error.internal') });
                 return;
             }
 
@@ -236,11 +249,12 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
         }
     });
 
-    // Elfogadás/elutasítás — csak `pending_review` állapotból indulhat (a QSL-re
-    // váró beadvány nem bírálható el, lásd controllers/submissions.js
-    // upload_qsl kommentjét: amíg nincs meg minden QSL-kép, nem is kerül ide).
-    // A döntés VÉGLEGES ezen a lépésen belül (nincs "vissza pending_review-ba"
-    // action) — a PDF-generálás (9. lépés) az `approved` státuszra épül majd.
+    // Approval/rejection — can only start from `pending_review` status (a
+    // submission awaiting QSL cannot be reviewed, see the comment on
+    // controllers/submissions.js's upload_qsl: until every QSL image is
+    // present, it doesn't even get here). The decision is FINAL within this
+    // step (there's no "back to pending_review" action) — PDF generation
+    // (step 9) will build on the `approved` status.
     schema.action('decide', {
         permissions: ['manager'],
         input: '*decision:string, remark:string',
@@ -299,15 +313,15 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
         }
     });
 
-    // A beadvány TULAJDONOSA indítja — Stripe Checkout / PayPal Order
-    // létrehozása (a diploma ténylegesen felkínált `paymentMethods`-ai közül),
-    // vagy banki utalás esetén csak a diploma bankszámla-adatainak
-    // visszaadása + a `submission.payment` "pending" jelölése (a tényleges
-    // jóváhagyás a manager `confirmBankTransfer` actionje). A tényleges
-    // Stripe/PayPal fizetés-megerősítés NEM itt, hanem a
-    // controllers/payments.js webhookjaiban/return-oldalaiban történik (azok
-    // nem $.user-hez kötött külső hívások — a séma-action réteg csak az
-    // INDÍTÁST végzi).
+    // Initiated by the submission's OWNER — creating a Stripe Checkout /
+    // PayPal Order (from among the diploma's actually offered
+    // `paymentMethods`), or for bank transfer just returning the diploma's
+    // bank account details + marking `submission.payment` as "pending" (the
+    // actual approval is the manager's `confirmBankTransfer` action). The
+    // actual Stripe/PayPal payment confirmation happens NOT here, but in
+    // controllers/payments.js's webhooks/return pages (those are external
+    // calls not tied to $.user — the schema-action layer only performs the
+    // INITIATION).
     schema.action('pay', {
         input: '*provider:string',
         language: true,
@@ -343,10 +357,11 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
 
             let amount = PAYMENT_PRICING.calculateFee(diploma, submission.deliveryChoice);
             let currency = diploma.pricing.currency;
-            // Emberi léptékű, egyedi fizetési hivatkozás — a sorszám ekkorra
-            // már ki van osztva (a decide action a PDF-generálással EGYÜTT,
-            // a fizetési állapottól függetlenül kiosztja, lásd issueCertificate()
-            // fent), úgyhogy erre hivatkozhatunk a nyers Mongo _id helyett.
+            // A human-scale, unique payment reference — the serial number has
+            // already been allocated by this point (the decide action
+            // allocates it TOGETHER with the PDF generation, independent of
+            // the payment status, see issueCertificate() above), so we can
+            // reference that instead of the raw Mongo _id.
             let reference = submission.serialNumber ? String(submission.serialNumber) : String(submission._id);
 
             if ($.model.provider === 'stripe') {
@@ -426,14 +441,15 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
         }
     });
 
-    // Manager MANUÁLIS jóváhagyása — kizárólag banki utalásnál kell (a
-    // Stripe/PayPal fizetéseket a webhook/return-oldal automatikusan
-    // megerősíti, lásd controllers/payments.js), de szándékosan nem kötöttük
-    // a `submission.payment.provider === 'bank_transfer'`-hez sem: ha egy
-    // Stripe/PayPal webhook valamiért nem érkezne meg (pl. helyi fejlesztői
-    // környezetben nincs publikus URL), a manager így KÉZZEL is lezárhatja,
-    // miután a fizetést más úton (pl. a Stripe/PayPal admin-felületén)
-    // ellenőrizte.
+    // Manager's MANUAL approval — only needed for bank transfer (the
+    // Stripe/PayPal payments are automatically confirmed by the
+    // webhook/return page, see controllers/payments.js), but we
+    // intentionally didn't tie this to
+    // `submission.payment.provider === 'bank_transfer'` either: if a
+    // Stripe/PayPal webhook somehow doesn't arrive (e.g. no public URL in a
+    // local development environment), the manager can still close it out
+    // MANUALLY this way, after verifying the payment through another channel
+    // (e.g. the Stripe/PayPal admin interface).
     schema.action('confirmBankTransfer', {
         permissions: ['manager'],
         language: true,
@@ -478,11 +494,11 @@ NEWSCHEMA('Submissions/Submissions', function (schema) {
         }
     });
 
-    // Fizikai kézbesítésnél a fizetés után még hátra van a nyomtatás/
-    // keretezés/postázás — ezt a manager jelöli "teljesítve"-nek, miután
-    // ténylegesen elküldte. PDF-only kézbesítésnél nincs értelme (a `paid`
-    // már önmagában is a folyamat vége — a letöltés a fizetés
-    // megtörténtével már elérhető, lásd serve_diploma_pdf).
+    // For physical delivery, after payment there's still printing/
+    // framing/mailing left — the manager marks this "completed" once they've
+    // actually sent it. Meaningless for PDF-only delivery (`paid` is already
+    // the end of the process by itself — the download becomes available as
+    // soon as payment happens, see serve_diploma_pdf).
     schema.action('markCompleted', {
         permissions: ['manager'],
         language: true,
@@ -526,8 +542,8 @@ function isDbError(result) {
     return Array.isArray(result) && result[0] != null && result[0].error != null;
 }
 
-// Tulajdonos, a diploma felelős managere, vagy superadmin láthatja (a
-// manager-review UI, 8. lépés, ugyanezt a szabályt használja megtekintésre).
+// Visible to the owner, the diploma's responsible manager, or superadmin
+// (the manager-review UI, step 8, uses this same rule for viewing).
 async function canAccessSubmission(user, submission) {
     if (user.sa || submission.userId === user._id)
         return true;
@@ -536,17 +552,19 @@ async function canAccessSubmission(user, submission) {
     return !!(diploma && diploma.managerId && diploma.managerId === user._id);
 }
 
-// A reviewQueue/adjustPoints/decide actionöknek: superadmin VAGY a diploma
-// hozzárendelt managere dönthet/korrigálhat — a beadvány TULAJDONOSA itt
-// szándékosan NEM elég, ellentétben canAccessSubmission-nel (az a megtekintést
-// engedi tulajdonosnak is, ez itt a tényleges elbírálást). A TULAJDONOS SOSE
-// reviewer itt, MÉG AKKOR SEM, ha egyébként sa/manager (senki nem bírálhatja el
-// a saját beadványát — felhasználói visszajelzés nyomán bevezetett szabály,
-// lásd controllers/submissions.js view_detail ugyanezen, UI-oldali tükrét).
-// KIVÉTEL: `DEBUG` módban (Total.js global, csak fejlesztői környezetben igaz)
-// a tulajdonos IS reviewernek számít, ha egyébként sa/a diploma managere —
-// felhasználói kérésre, hogy egyetlen teszt-manager-fiókkal is végig lehessen
-// próbálni az elbírálást. ÉLES (nem-DEBUG) környezetben ez sose fut.
+// For the reviewQueue/adjustPoints/decide actions: superadmin OR the
+// diploma's assigned manager may decide/correct — the submission's OWNER is
+// intentionally NOT enough here, unlike in canAccessSubmission (that allows
+// viewing for the owner too, this one is the actual review). The OWNER is
+// NEVER a reviewer here, EVEN IF they otherwise happen to be sa/manager
+// (nobody may review their own submission — a rule introduced following user
+// feedback, see the same, UI-side mirror of this in controllers/
+// submissions.js's view_detail). EXCEPTION: in `DEBUG` mode (Total.js
+// global, true only in the development environment) the owner IS ALSO
+// considered a reviewer if they're otherwise sa/the diploma's manager — at
+// user request, so that the review process can be walked through end to end
+// using a single test-manager account. In PRODUCTION (non-DEBUG) this never
+// runs.
 function isReviewerOf(user, submission, diploma) {
     if (submission.userId === user._id && !DEBUG)
         return false;
@@ -557,10 +575,10 @@ function isReviewerOf(user, submission, diploma) {
     return !!(diploma && diploma.managerId && diploma.managerId === user._id);
 }
 
-// A managerhez rendelt diplomák _id-jait adja vissza STRING formában (a
-// submissions.diplomaId is string — lásd controllers/submissions.js
-// upload_submission `diplomaId: String(diploma._id)` mentését), a reviewQueue
-// action diploma-szűréséhez.
+// Returns the _ids of the diplomas assigned to the manager, in STRING form
+// (submissions.diplomaId is also a string — see the
+// `diplomaId: String(diploma._id)` save in controllers/submissions.js's
+// upload_submission), for the reviewQueue action's diploma filtering.
 async function managedDiplomaIds(userId) {
     let diplomas = await MDB.find(process.env.MONGODB_DB_NAME, 'diplomas', { managerId: userId }, { projection: { _id: 1 } });
 
@@ -570,9 +588,9 @@ async function managedDiplomaIds(userId) {
     return diplomas.map(d => String(d._id));
 }
 
-// A diploma nevét/típusát oldja fel minden beadványra, ugyanaz a minta, mint
-// a schemas/diplomas/diplomas.js attachManagerInfo()-ja (szándékosan külön
-// másolat, nem közös modul — lásd ott a kommentet).
+// Resolves the diploma's name/type for every submission, the same pattern as
+// schemas/diplomas/diplomas.js's attachManagerInfo() (intentionally a
+// separate copy, not a shared module — see the comment there).
 async function attachDiplomaInfo(submissions) {
     let ids = submissions.map(s => s.diplomaId).filter(id => id);
 
@@ -597,9 +615,10 @@ async function attachDiplomaInfo(submissions) {
     }
 }
 
-// A beküldő hívójelét/e-mailét oldja fel minden beadványra — a reviewQueue
-// listának kell (a manager tudja, ki adta be), a saját "Beadványaim" listánál
-// (query action) nincs értelme, azt szándékosan nem hívja.
+// Resolves the submitter's callsign/email for every submission — needed by
+// the reviewQueue list (so the manager knows who submitted it), pointless
+// for the own "My Submissions" list (query action), which intentionally
+// doesn't call it.
 async function attachApplicantInfo(submissions) {
     let ids = submissions.map(s => s.userId).filter(id => id);
 
@@ -624,18 +643,19 @@ async function attachApplicantInfo(submissions) {
     }
 }
 
-// A manager döntéséről (elfogadás/elutasítás) e-mail értesítés a beküldőnek —
-// SAJÁT nyelvén (users.language, a regisztrációkor mentett érték), NEM a
-// döntést hozó manager nyelvén (lásd schemas/users/users.js formatName()-jét,
-// itt szándékosan külön másolat). Hibát csak logol, a döntést magát nem
-// bukja el (ugyanaz a minta, mint a users.js összes MAIL() hívásánál). A
-// `user`-t a hívó (decide action) adja át — ugyanazt a lekérdezést egyébként
-// az `issueCertificate()`-nek is ki kellene fizetnie, felesleges duplikálni.
+// Email notification to the submitter about the manager's decision
+// (approval/rejection) — in THEIR OWN language (users.language, the value
+// saved at registration), NOT the deciding manager's language (see
+// schemas/users/users.js's formatName(), intentionally a separate copy
+// here). Only logs an error, doesn't fail the decision itself (the same
+// pattern as all of users.js's MAIL() calls). `user` is passed in by the
+// caller (decide action) — otherwise `issueCertificate()` would have to pay
+// for the same query too, no point duplicating it.
 async function notifyDecision($, submission, status, remark, user) {
     let language = user.language || 'hu';
-    // 'awaiting_payment' is a jóváhagyás ÁGA (csak fizetendő díj miatt nem
-    // 'approved' a végleges státusz, lásd decide action) — az e-mail
-    // szövegezése szempontjából ugyanaz, mint 'approved'.
+    // 'awaiting_payment' is a BRANCH of approval (the final status isn't
+    // 'approved' only because of a fee to be paid, see the decide action) —
+    // from the email wording's point of view, it's the same as 'approved'.
     let key = (status === 'approved' || status === 'awaiting_payment') ? 'approved' : 'rejected';
 
     MAIL(user.email, RESOURCE(language, `email.submission.${key}.subject`), 'submissions/email-decision', {
@@ -652,10 +672,11 @@ async function notifyDecision($, submission, status, remark, user) {
     });
 }
 
-// A beérkezett fizetésről szóló e-mail — a `confirmBankTransfer` action és a
-// controllers/payments.js webhook/return-kezelői is hívják (utóbbiak
-// `$`-kontextus NÉLKÜL futnak, ezért a `$` paraméter opcionális — csak a
-// hibalogoláshoz kell, aminek hiányában `console.log`-ra esik vissza).
+// The email about a received payment — called both by the
+// `confirmBankTransfer` action and controllers/payments.js's webhook/return
+// handlers (the latter run WITHOUT a `$` context, so the `$` parameter is
+// optional — it's only needed for error logging, which falls back to
+// `console.log` in its absence).
 async function notifyPaymentConfirmed($, submission) {
     let user = await MDB.findOne(process.env.MONGODB_DB_NAME, 'users', { _id: MDB.ObjectID(submission.userId) }, {
         projection: { email: 1, firstName: 1, lastName: 1, language: 1 }
@@ -683,27 +704,28 @@ async function notifyPaymentConfirmed($, submission) {
     });
 }
 
-// Értesítés a managernek (vagy - ha a diplománál nincs kijelölt manager -
-// az összes superadminnak), hogy egy beadvány elbírálásra vár. KIZÁRÓLAG
-// akkor hívandó, amikor egy beadvány EBBEN a pillanatban lép
-// 'pending_review' állapotba ÉS a diploma NEM autoApprove (lásd a hívási
-// pontokat: controllers/submissions.js upload_submission - nincs
-// QSL-mintavételezés - és upload_qsl - QSL-mintavételezésnél az UTOLSÓ kép
-// feltöltésekor). autoApprove esetén sosem hívjuk, hiszen ott a beadvány
-// azonnal tovább is lép, nincs emberi döntésre váró állapot. Ha a diplomán
-// nincs managerId (még nem lett kijelölve), nincs más "ki felelős ezért"
-// fogalom a projektben, ezért az ÖSSZES superadmin kap értesítést - hiba
-// esetén csak logol, nem bukik el semmi (ugyanaz a minta, mint a fájl
-// többi MAIL() hívásánál).
+// Notification to the manager (or - if the diploma has no assigned manager -
+// to all superadmins) that a submission is awaiting review. To be called
+// EXCLUSIVELY when a submission moves into 'pending_review' status AT THIS
+// MOMENT AND the diploma is NOT autoApprove (see the call sites:
+// controllers/submissions.js's upload_submission - no QSL sampling - and
+// upload_qsl - upon uploading the LAST image for QSL sampling). Never called
+// for autoApprove, since there the submission immediately moves on too,
+// there's no state awaiting a human decision. If the diploma has no
+// managerId (not yet assigned), there's no other "who's responsible for
+// this" concept in the project, so ALL superadmins get notified - on error
+// it only logs, nothing fails (the same pattern as the rest of the file's
+// MAIL() calls).
 //
-// A levél NYELVE szándékosan a BEADÓ rádióamatőr (submission.userId) saját
-// nyelve, NEM a címzett (manager/superadmin) saját beállítása - felhasználói
-// kérésre (2026-09-18), mert korábban a címzett nyelvén ment ki, és emiatt
-// ugyanarról a beadványról hol magyar, hol angol levél érkezett, attól
-// függően, kinek milyen nyelv volt a fiókján beállítva. Ha az amatőr nyelve
-// valamiért nem határozható meg, a fallback 'en' - ez ELTÉR a projekt
-// általános 'hu' defaultjától (lásd 02_localization.js), de itt szándékos,
-// szintén felhasználói kérésre.
+// The email's LANGUAGE is intentionally the SUBMITTING radio amateur's
+// (submission.userId) own language, NOT the recipient's (manager/superadmin)
+// own setting - at user request (2026-09-18), because previously it went out
+// in the recipient's language, and because of this, about the same
+// submission, sometimes a Hungarian, sometimes an English email arrived,
+// depending on which language was set on whose account. If the amateur's
+// language can't be determined for some reason, the fallback is 'en' - this
+// DIFFERS from the project's general 'hu' default (see 02_localization.js),
+// but it's intentional here, also at user request.
 async function notifyManagerReviewNeeded($, submission, diploma) {
     let applicant = await MDB.findOne(process.env.MONGODB_DB_NAME, 'users', { _id: MDB.ObjectID(submission.userId) }, {
         projection: { language: 1 }
@@ -751,16 +773,17 @@ async function notifyManagerReviewNeeded($, submission, diploma) {
     }
 }
 
-// Értesítés a BEADÓ rádióamatőrnek, hogy a beadványához QSL-igazolás(oka)t
-// kell feltöltenie (a diploma QSL-mintavételezése kisorsolt rá néhány QSO-t,
-// lásd drawQslSample, controllers/submissions.js) — enélkül a beadvány
-// `awaiting_qsl` állapotban ragadna, a bírálat el sem indulhat. Felhasználói
-// kérésre (2026-09-18): könnyen előfordulhat, hogy ezt valaki nem veszi
-// észre a beadás utáni átirányításon (a beadvány oldalán ugyan látszik, de
-// nincs rá külön figyelemfelhívás) — KIZÁRÓLAG az upload_submission hívja,
-// közvetlenül a beadás pillanatában, amikor a `status` `awaiting_qsl`-re áll
-// (lásd ott). Az `applicant`-et a hívó már úgyis lekérdezte (email/name/
-// language a rule-engine kiértékeléshez), nem duplikáljuk a lekérdezést.
+// Notification to the SUBMITTING radio amateur that they need to upload QSL
+// confirmation(s) for their submission (the diploma's QSL sampling drew some
+// QSOs for it, see drawQslSample, controllers/submissions.js) — without this
+// the submission would get stuck in `awaiting_qsl` status, review couldn't
+// even start. At user request (2026-09-18): it can easily happen that
+// someone doesn't notice this on the post-submission redirect (it is visible
+// on the submission page, but there's no dedicated call-out for it) —
+// called EXCLUSIVELY by upload_submission, right at the moment of
+// submission, when `status` is set to `awaiting_qsl` (see there). The caller
+// has already looked up `applicant` anyway (email/name/language for the
+// rule-engine evaluation), we don't duplicate the query.
 async function notifyApplicantQslNeeded($, submission, diploma, applicant) {
     let language = applicant.language || 'hu';
     let qslCount = Array.isArray(submission.qslRequests) ? submission.qslRequests.length : 0;
@@ -779,26 +802,28 @@ async function notifyApplicantQslNeeded($, submission, diploma, applicant) {
     });
 }
 
-// Ugyanaz, mint schemas/users/users.js formatName()-je (szándékosan külön
-// másolat — lásd a fájl tetején lévő indoklást a séma-file-ok önállóságáról).
+// Same as schemas/users/users.js's formatName() (intentionally a separate
+// copy — see the justification at the top of the file about schema-file
+// independence).
 function formatName(lang, firstName, lastName) {
     return lang === 'hu' ? `${lastName} ${firstName}` : `${firstName} ${lastName}`;
 }
 
-// A CERT_RENDERER.renderPdf() overlayFields-jéhez tartozó `fieldValues` map
-// összeállítása egy JÓVÁHAGYOTT beadványból (lásd schemas/diplomas/diplomas.js
-// OVERLAY_KEYS — csak a diplomán ténylegesen bekapcsolt mezők jelennek meg a
-// végleges PDF-en, a renderer maga hagyja ki a hiányzó/üres kulcsokat). A
-// `points`/`categoryLabel`/`tierLabel`/`zoneLabel` csak `ruleMode:'points'`
-// diplománál értelmezett (checklist módban a submission.autoCheckDetails.mode
-// 'checklist', ott nincs pontszám-fogalom) — a kategória/fokozat-adatok a
-// FELTÖLTÉSKOR (automatikus pontok alapján) számolt autoCheckDetails.categories
-// tömbből jönnek: ha a manager utólag kézi korrekcióval módosította a
-// pontszámot, ez a bontás NEM számolódik újra kategóriánként (a `points` mező
-// viszont a VÉGLEGES, korrigált `submission.totalPoints`-ot mutatja) — ha egy
-// kézi korrekció ténylegesen átbillentene egy fokozat-határt, ez egy ismert,
-// vállalt korlát, nem hiba. Több, egyszerre elért kategória esetén a
-// legmagasabb pontszámú (categoryPoints) kategória kerül a bizonyítványra.
+// Assembling the `fieldValues` map for CERT_RENDERER.renderPdf()'s
+// overlayFields from an APPROVED submission (see
+// schemas/diplomas/diplomas.js's OVERLAY_KEYS — only the fields actually
+// enabled on the diploma appear on the final PDF, the renderer itself skips
+// missing/empty keys). `points`/`categoryLabel`/`tierLabel`/`zoneLabel` are
+// only meaningful for a `ruleMode:'points'` diploma (in checklist mode,
+// submission.autoCheckDetails.mode is 'checklist', there's no concept of a
+// score there) — the category/tier data comes from the autoCheckDetails.categories
+// array computed AT UPLOAD TIME (based on the automatic points): if the
+// manager later modified the score with a manual correction, this breakdown
+// is NOT recomputed per category (the `points` field, however, shows the
+// FINAL, corrected `submission.totalPoints`) — if a manual correction would
+// actually tip over a tier boundary, this is a known, accepted limitation,
+// not a bug. If multiple categories are achieved at once, the one with the
+// highest score (categoryPoints) goes on the certificate.
 function buildCertificateFieldValues(diploma, submission, applicant, language, serialNumber) {
     let values = {
         callsign: applicant.callsign || '',
@@ -829,14 +854,35 @@ function buildCertificateFieldValues(diploma, submission, applicant, language, s
     return values;
 }
 
-// Atomi sorszám-kiosztás + a végleges (vízjel NÉLKÜLI) PDF oklevél
-// legenerálása és tárolása — KIZÁRÓLAG a `decide` action 'approve' ágából
-// hívva, a döntést rögzítő DB-írás ELŐTT (lásd ott a kommentet, miért ebben a
-// sorrendben). A diploma `serialCounter`-e a `serialStart`-tal indul, és minden
-// jóváhagyásnál ELŐSZÖR a JELENLEGI értéket osztjuk ki (a `findOneAndUpdate`
-// `returnDocument:'before'` a NÖVELÉS ELŐTTI dokumentumot adja vissza), utána
-// nő eggyel a következő jóváhagyásnak — így egy `serialStart:1` diploma első
-// ténylegesen kiadott oklevele az #1 sorszámot kapja, nem a #2-t.
+// The filename offered on download (Content-Disposition, see
+// controllers/submissions.js's serve_diploma_pdf) — at user request
+// (2026-09-18): "[callsign]-[diploma name]-[YYMMDD].pdf" format, so that the
+// downloaded file's name is identifiable on its own (not just offering the
+// raw storage key, `submissions/{id}/diploma.pdf`).
+function sanitizeFilenamePart(text) {
+    return String(text).trim().replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function formatYymmdd(date) {
+    let yy = String(date.getFullYear()).slice(-2);
+    let mm = String(date.getMonth() + 1).padStart(2, '0');
+    let dd = String(date.getDate()).padStart(2, '0');
+    return yy + mm + dd;
+}
+
+function buildCertificateFilename(applicant, diploma, date) {
+    return `${sanitizeFilenamePart(applicant.callsign)}-${sanitizeFilenamePart(diploma.name)}-${formatYymmdd(date)}.pdf`;
+}
+
+// Atomic serial number allocation + generating and storing the final
+// (watermark-FREE) PDF diploma — called EXCLUSIVELY from the `decide`
+// action's 'approve' branch, BEFORE the DB write that records the decision
+// (see the comment there for why in this order). The diploma's
+// `serialCounter` starts at `serialStart`, and on every approval we FIRST
+// allocate the CURRENT value (the `findOneAndUpdate`'s
+// `returnDocument:'before'` returns the document BEFORE THE INCREMENT), then
+// it increments by one for the next approval — so a `serialStart:1`
+// diploma's first actually issued certificate gets serial #1, not #2.
 async function issueCertificate($, submission, diploma, applicant) {
     if (!diploma || !diploma.blankImage || !diploma.blankImage.key || !(await STORAGE.exists(diploma.blankImage.key)))
         return { error: RESOURCE($.language, 'error.internal') };
@@ -868,23 +914,24 @@ async function issueCertificate($, submission, diploma, applicant) {
 
     return {
         serialNumber: serialNumber,
-        issuedPdf: { filename: `oklevel-${serialNumber}.pdf`, storage: STORAGE.driver, key: key }
+        issuedPdf: { filename: buildCertificateFilename(applicant, diploma, new Date()), storage: STORAGE.driver, key: key }
     };
 }
 
-// Egy beadvány elfogadása — sorszám-kiosztás + PDF-generálás (issueCertificate)
-// + a döntés rögzítése + értesítő e-mail. Ez a KÖZÖS logika a manager kézi
-// jóváhagyása (lásd a 'decide' action fenti approve ága) ÉS az automatikus
-// elfogadás (diploma.autoApprove, lásd controllers/submissions.js
-// upload_submission — onnan a lent globálisan exportált
-// SUBMISSIONS_APPROVAL.approve-on keresztül hívva) között — `reviewerId` a
-// kézi esetben a jóváhagyó manager _id-ja, automatikus elfogadásnál `null`
-// (senki nem bírálta el emberileg, ez auditálható nyom, lásd a submission
-// `reviewedBy` mezőjét). `$` a hívó kontextusa — sémaakciónál a szokásos `$`,
-// a controllerből hívva a controller `self`-je (mindkettőn van `.language`,
-// és a belső `FUNC.logger($, ...)`/`RESOURCE($.language, ...)` hívások
-// mindkettővel működnek, lásd notifyPaymentConfirmed hasonló, `$` nélkül is
-// hívható mintáját lentebb).
+// Approving a submission — serial number allocation + PDF generation
+// (issueCertificate) + recording the decision + notification email. This is
+// the SHARED logic between the manager's manual approval (see the 'decide'
+// action's approve branch above) AND automatic approval (diploma.autoApprove,
+// see controllers/submissions.js's upload_submission — called from there
+// through the globally exported SUBMISSIONS_APPROVAL.approve below) —
+// `reviewerId` is the approving manager's _id in the manual case, `null` for
+// automatic approval (nobody reviewed it as a human, this is an auditable
+// trace, see the submission's `reviewedBy` field). `$` is the caller's
+// context — the usual `$` for a schema action, the controller's `self` when
+// called from the controller (both have `.language`, and the internal
+// `FUNC.logger($, ...)`/`RESOURCE($.language, ...)` calls work with both,
+// see notifyPaymentConfirmed's similar pattern, also callable without `$`,
+// below).
 async function approveSubmission($, submission, diploma, applicant, reviewerId, remark) {
     let certificate = await issueCertificate($, submission, diploma, applicant);
 
@@ -902,19 +949,19 @@ async function approveSubmission($, submission, diploma, applicant, reviewerId, 
         updated: new Date()
     };
 
-    // Ha a kiválasztott kézbesítési módért (PDF-fee, ill. fizikai esetén
-    // PDF-fee + felár, lásd modules/payment-pricing.js) a diploma díjat kér,
-    // a beadvány NEM 'approved'-ként áll meg, hanem egyből 'awaiting_payment'-
-    // re vált — a PDF már EKKOR legenerálódik/tárolódik, de a LETÖLTÉSE a
-    // `serve_diploma_pdf` controller-actionben zárolva van, amíg a
-    // `pricing.pdfFee` konkrétan ki nincs fizetve (lásd ott
-    // `pdfDownloadAllowed`). Automatikus elfogadásnál (autoApprove) ez a
-    // diploma-mentés validációja miatt gyakorlatilag mindig 0 (fizikai
-    // kézbesítés autoApprove-nál tiltott, PDF-díj viszont technikailag
-    // engedélyezett marad — ha valaki mégis beállítana rá PDF-díjat, ugyanígy
-    // 'awaiting_payment'-re vált, NEM 'approved'-ra, tehát az "azonnal
-    // megkapja" ígéret erre az esetre nem teljesül maradéktalanul, ez
-    // szándékos és konzisztens a kézi jóváhagyás viselkedésével).
+    // If the diploma charges a fee for the chosen delivery mode (PDF fee, or
+    // for physical delivery, PDF fee + surcharge, see
+    // modules/payment-pricing.js), the submission does NOT stop at
+    // 'approved', but switches straight to 'awaiting_payment' — the PDF is
+    // already generated/stored at THIS point, but its DOWNLOAD is locked in
+    // the `serve_diploma_pdf` controller action until `pricing.pdfFee` is
+    // actually paid (see `pdfDownloadAllowed` there). For automatic approval
+    // (autoApprove) this is practically always 0 due to the diploma-save
+    // validation (physical delivery is forbidden for autoApprove, but a PDF
+    // fee technically remains allowed — if someone still configures a PDF
+    // fee for it, it likewise switches to 'awaiting_payment', NOT 'approved',
+    // so the "gets it immediately" promise isn't fully kept for this case;
+    // this is intentional and consistent with manual approval's behavior).
     let amount = PAYMENT_PRICING.calculateFee(diploma, submission.deliveryChoice);
 
     if (amount > 0) {
@@ -951,29 +998,29 @@ async function rejectSubmission($, submission, remark, applicant, reviewerId) {
     return { status: 'rejected' };
 }
 
-// A controller (controllers/submissions.js upload_submission, upload_qsl)
-// INNEN, nem séma-route-on keresztül hívja az automatikus elfogadást ill. a
-// manager-értesítést — a sémafájlok (schemas/) module-scope függvényei
-// alapból nem érhetők el máshonnan, ezért itt, a fájl betöltésekor
-// (NEWSCHEMA-n kívül, de ugyanabban a closure-ban) tesszük globálisan
-// elérhetővé, a projekt modules/-beli globális namespace-eihez (ADIF_PARSER,
-// RULE_ENGINE, CERT_RENDERER stb.) hasonló mintával.
+// The controller (controllers/submissions.js's upload_submission, upload_qsl)
+// calls the automatic approval and the manager notification FROM HERE, not
+// through a schema route — a schema file's (schemas/) module-scope functions
+// aren't reachable from elsewhere by default, so here, at file load time
+// (outside NEWSCHEMA, but in the same closure), we make it globally
+// available, following a pattern similar to the project's modules/-level
+// global namespaces (ADIF_PARSER, RULE_ENGINE, CERT_RENDERER, etc.).
 global.SUBMISSIONS_APPROVAL = { approve: approveSubmission, notifyReviewNeeded: notifyManagerReviewNeeded, notifyQslNeeded: notifyApplicantQslNeeded };
 
-// A submission tényleges totalPoints-ját számolja újra a NYERS autoPoints
-// (qsoBreakdown, a rule-engine már a "globális maximum" logikával számolta ki
-// QSO-nként, lásd modules/rule-engine.js) és a manualAdjustments alapján —
-// MINDIG a teljes listából, nem inkrementálisan, hogy a globális-maximum
-// filozófia konzisztens maradjon a kézi korrekciókkal is: egy QSO-hoz kötött,
-// SZABÁLY-alapú kézi korrekció (`ruleBased:true`, lásd adjustPoints action)
-// egy MÁSIK, a rendszer által esetleg csak emberi megerősítéssel felismert
-// illeszkedő szabályt jelent — ez NEM adódik hozzá az automatikusan talált
-// legjobb szabály pontjához, hanem ugyanúgy versenyez vele: a kettő közül a
-// MAGASABB pontú számít (felhasználói visszajelzés: "nem +3 pontot kap, hanem
-// módosul 3-ra"). Egy EGYÉNI (nem szabály-alapú) kézi korrekció viszont
-// valódi, a szabályrendszertől független jóváírás/levonás — az TOVÁBBRA IS
-// hozzáadódik (akár QSO-hoz kötött, akár nem — a nem QSO-hoz kötött
-// korrekciók pedig, mivel nincs mihez "versenyezniük", mindig összeadódnak).
+// Recomputes the submission's actual totalPoints based on the RAW autoPoints
+// (qsoBreakdown, already computed per-QSO by the rule engine using the
+// "global maximum" logic, see modules/rule-engine.js) and manualAdjustments —
+// ALWAYS from the full list, not incrementally, so that the global-maximum
+// philosophy stays consistent with manual corrections too: a QSO-bound,
+// RULE-based manual correction (`ruleBased:true`, see the adjustPoints
+// action) represents ANOTHER matching rule that the system perhaps only
+// recognized with human confirmation — this does NOT add to the points of
+// the automatically found best rule, but competes with it the same way: the
+// HIGHER of the two counts (user feedback: "it doesn't get +3 points, it
+// changes to 3"). An INDIVIDUAL (non-rule-based) manual correction, however,
+// is a genuine credit/deduction independent of the rule system — that STILL
+// adds up (whether QSO-bound or not — and the non-QSO-bound corrections,
+// since they have nothing to "compete" with, always add up).
 function computeTotalPoints(qsoBreakdown, manualAdjustments) {
     let qsoAutoPoints = {};
 
@@ -1022,10 +1069,10 @@ function computeTotalPoints(qsoBreakdown, manualAdjustments) {
         }
     }
 
-    // Védőháló: ha egy manualAdjustments qsoRef véletlenül nem szerepel a
-    // qsoBreakdown-ban (nem fordulhatna elő — az adjustPoints action
-    // létrehozáskor ellenőrzi a qsoRef létezését), a hozzá tartozó pontokat ne
-    // veszítsük el.
+    // Safety net: if a manualAdjustments qsoRef is accidentally not present
+    // in qsoBreakdown (shouldn't happen — the adjustPoints action verifies
+    // the qsoRef's existence at creation time), don't lose the points
+    // belonging to it.
     for (let key in byQso) {
         total += (byQso[key].bestRulePoints || 0) + byQso[key].customSum;
     }
